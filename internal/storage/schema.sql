@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS match_player_stats (
     match_id INTEGER NOT NULL REFERENCES matches(id),
     player_guid_id INTEGER NOT NULL REFERENCES player_guids(id) ON DELETE CASCADE,
     client_id INTEGER NOT NULL DEFAULT 0,
-    kills INTEGER DEFAULT 0,
+    frags INTEGER DEFAULT 0,
     deaths INTEGER DEFAULT 0,
     joined_late BOOLEAN DEFAULT FALSE,
     completed BOOLEAN DEFAULT FALSE,
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS match_player_stats (
 
 CREATE INDEX IF NOT EXISTS idx_match_player_stats_player_guid_id ON match_player_stats(player_guid_id);
 CREATE INDEX IF NOT EXISTS idx_match_player_stats_completed ON match_player_stats(completed);
-CREATE INDEX IF NOT EXISTS idx_match_player_stats_covering ON match_player_stats(player_guid_id, match_id, kills, deaths);
+CREATE INDEX IF NOT EXISTS idx_match_player_stats_covering ON match_player_stats(player_guid_id, match_id, frags, deaths);
 
 -- Users for authentication
 CREATE TABLE IF NOT EXISTS users (

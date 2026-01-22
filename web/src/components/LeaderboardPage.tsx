@@ -13,6 +13,7 @@ import { UserManagement } from "./UserManagement";
 import { PeriodSelector } from "./PeriodSelector";
 import { useAuth } from "../hooks/useAuth";
 import { GAME_TYPE_LABELS, type GameTypeFilter } from "../constants/labels";
+import { formatNumber } from "../utils";
 import type {
   LeaderboardResponse,
   LeaderboardCategory,
@@ -57,7 +58,7 @@ interface LeaderboardPageProps {
 const CATEGORY_LABELS: Record<LeaderboardCategory, string> = {
   matches: "Matches",
   kd_ratio: "K/D",
-  kills: "Kills",
+  frags: "Frags",
   deaths: "Deaths",
   victories: "Victories",
   excellents: "Excellent",
@@ -73,7 +74,7 @@ const CATEGORY_LABELS: Record<LeaderboardCategory, string> = {
 const BASE_CATEGORIES: LeaderboardCategory[] = [
   "matches",
   "kd_ratio",
-  "kills",
+  "frags",
   "deaths",
   "victories",
   "excellents",
@@ -137,7 +138,7 @@ export function LeaderboardPage({ botsOnly = false }: LeaderboardPageProps) {
   // Reset category if it's no longer available for the selected game type
   useEffect(() => {
     if (!availableCategories.includes(category)) {
-      setCategory("kills");
+      setCategory("frags");
     }
   }, [gameType, availableCategories, category]);
 
@@ -249,7 +250,7 @@ interface LeaderboardTableProps {
 const CORE_STATS_CATEGORIES = [
   "matches",
   "kd_ratio",
-  "kills",
+  "frags",
   "deaths",
 ] as const;
 
@@ -265,21 +266,21 @@ function LeaderboardTable({
   const getAwardValue = (entry: LeaderboardEntry): string => {
     switch (category) {
       case "captures":
-        return entry.captures.toString();
+        return formatNumber(entry.captures);
       case "flag_returns":
-        return entry.flag_returns.toString();
+        return formatNumber(entry.flag_returns);
       case "assists":
-        return entry.assists.toString();
+        return formatNumber(entry.assists);
       case "impressives":
-        return entry.impressives.toString();
+        return formatNumber(entry.impressives);
       case "excellents":
-        return entry.excellents.toString();
+        return formatNumber(entry.excellents);
       case "humiliations":
-        return entry.humiliations.toString();
+        return formatNumber(entry.humiliations);
       case "defends":
-        return entry.defends.toString();
+        return formatNumber(entry.defends);
       case "victories":
-        return entry.victories.toString();
+        return formatNumber(entry.victories);
       default:
         return "";
     }
@@ -297,7 +298,7 @@ function LeaderboardTable({
             <th className="player-col">Player</th>
             <th className={colClass("matches")}>Matches</th>
             <th className={colClass("kd_ratio")}>K/D</th>
-            <th className={colClass("kills")}>Kills</th>
+            <th className={colClass("frags")}>Frags</th>
             <th className={colClass("deaths")}>Deaths</th>
           </tr>
         </thead>
@@ -318,17 +319,17 @@ function LeaderboardTable({
               </td>
               <td className={colClass("matches")} title={
                 entry.uncompleted_matches > 0
-                  ? `${entry.completed_matches} completed, ${entry.uncompleted_matches} incomplete`
+                  ? `${formatNumber(entry.completed_matches)} completed, ${formatNumber(entry.uncompleted_matches)} incomplete`
                   : undefined
               }>
-                {entry.completed_matches}
-                {entry.uncompleted_matches > 0 && <sub>{entry.uncompleted_matches}</sub>}
+                {formatNumber(entry.completed_matches)}
+                {entry.uncompleted_matches > 0 && <sub>{formatNumber(entry.uncompleted_matches)}</sub>}
               </td>
               <td className={colClass("kd_ratio")}>
                 {entry.kd_ratio.toFixed(2)}
               </td>
-              <td className={colClass("kills")}>{entry.total_kills}</td>
-              <td className={colClass("deaths")}>{entry.total_deaths}</td>
+              <td className={colClass("frags")}>{formatNumber(entry.total_frags)}</td>
+              <td className={colClass("deaths")}>{formatNumber(entry.total_deaths)}</td>
             </tr>
           ))}
         </tbody>

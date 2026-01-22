@@ -105,11 +105,11 @@ func scanMatchPlayerSummary(s scanner, includeMatchID bool) (int64, *domain.Matc
 
 	var err error
 	if includeMatchID {
-		err = s.Scan(&matchID, &ps.PlayerID, &ps.Name, &ps.CleanName, &ps.Kills, &ps.Deaths,
+		err = s.Scan(&matchID, &ps.PlayerID, &ps.Name, &ps.CleanName, &ps.Frags, &ps.Deaths,
 			&ps.Completed, &ps.IsBot, &skill, &score, &team, &model,
 			&ps.Impressives, &ps.Excellents, &ps.Humiliations, &ps.Defends, &ps.Captures, &ps.Assists)
 	} else {
-		err = s.Scan(&ps.PlayerID, &ps.Name, &ps.CleanName, &ps.Kills, &ps.Deaths,
+		err = s.Scan(&ps.PlayerID, &ps.Name, &ps.CleanName, &ps.Frags, &ps.Deaths,
 			&ps.Completed, &ps.IsBot, &skill, &score, &team, &model,
 			&ps.Impressives, &ps.Excellents, &ps.Humiliations, &ps.Defends, &ps.Captures, &ps.Assists)
 	}

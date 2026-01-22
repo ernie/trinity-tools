@@ -254,6 +254,11 @@ h2 {
   color: #fff;
 }
 
+.match-state-overtime {
+  background: #ef4444;
+  color: #fff;
+}
+
 .warmup-countdown {
   font-weight: normal;
 }
@@ -299,6 +304,10 @@ h2 {
 
 .status-dot.intermission {
   background: #9c27b0;
+}
+
+.status-dot.overtime {
+  background: #ef4444;
 }
 
 /* Team scores */
@@ -1186,7 +1195,7 @@ h2 {
   color: var(--text-dim);
 }
 
-.match-player-row .kd .kills {
+.match-player-row .kd .frags {
   color: var(--green);
 }
 
@@ -2250,7 +2259,7 @@ h2 {
   color: var(--accent);
 }
 
-.stat-item .stat-value.kills {
+.stat-item .stat-value.frags {
   color: var(--green);
 }
 

@@ -45,7 +45,7 @@ type MatchPlayerSummary struct {
 	PlayerID     int64    `json:"player_id"`
 	Name         string   `json:"name"`
 	CleanName    string   `json:"clean_name"`
-	Kills        int      `json:"kills"`
+	Frags        int      `json:"frags"`
 	Deaths       int      `json:"deaths"`
 	Completed    bool     `json:"completed"`
 	IsBot        bool     `json:"is_bot"`

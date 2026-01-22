@@ -395,25 +395,32 @@ func cmdLeaderboard(args []string) {
 		}
 	}
 
-	var stats []map[string]interface{}
-	if err := getJSON("/api/stats/leaderboard?limit="+limit, &stats); err != nil {
+	var response map[string]interface{}
+	if err := getJSON("/api/stats/leaderboard?limit="+limit, &response); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
+	entries, ok := response["entries"].([]interface{})
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Error: unexpected response format\n")
+		os.Exit(1)
+	}
+
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "RANK\tPLAYER\tKILLS\tDEATHS\tK/D\tMATCHES")
+	fmt.Fprintln(w, "RANK\tPLAYER\tFRAGS\tDEATHS\tK/D\tMATCHES")
 	fmt.Fprintln(w, "----\t------\t-----\t------\t---\t-------")
 
-	for i, stat := range stats {
+	for i, entry := range entries {
+		stat := entry.(map[string]interface{})
 		player := stat["player"].(map[string]interface{})
 		name := player["clean_name"].(string)
-		kills := int64(stat["total_kills"].(float64))
+		frags := int64(stat["total_frags"].(float64))
 		deaths := int64(stat["total_deaths"].(float64))
 		kd := stat["kd_ratio"].(float64)
 		matches := int64(stat["total_matches"].(float64))
 
-		fmt.Fprintf(w, "%d\t%s\t%d\t%d\t%.2f\t%d\n", i+1, name, kills, deaths, kd, matches)
+		fmt.Fprintf(w, "%d\t%s\t%d\t%d\t%.2f\t%d\n", i+1, name, frags, deaths, kd, matches)
 	}
 
 	w.Flush()

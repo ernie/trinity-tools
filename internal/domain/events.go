@@ -9,7 +9,7 @@ const (
 	EventServerUpdate  = "server_update"
 	EventMatchStart    = "match_start"
 	EventMatchEnd      = "match_end"
-	EventKill          = "kill"
+	EventFrag          = "frag"
 	EventFlagCapture   = "flag_capture"
 	EventFlagTaken     = "flag_taken"
 	EventFlagReturn    = "flag_return"
@@ -55,13 +55,13 @@ type MatchEndEvent struct {
 	ExitReason string `json:"exit_reason"`
 }
 
-// KillEvent is sent when a frag occurs
-type KillEvent struct {
-	Killer         string `json:"killer"`
-	Victim         string `json:"victim"`
-	Weapon         string `json:"weapon"`
-	KillerPlayerID *int64 `json:"killer_player_id,omitempty"`
-	VictimPlayerID *int64 `json:"victim_player_id,omitempty"`
+// FragEvent is sent when a frag occurs
+type FragEvent struct {
+	Fragger         string `json:"fragger"`
+	Victim          string `json:"victim"`
+	Weapon          string `json:"weapon"`
+	FraggerPlayerID *int64 `json:"fragger_player_id,omitempty"`
+	VictimPlayerID  *int64 `json:"victim_player_id,omitempty"`
 }
 
 // FlagCaptureEvent is sent when a flag is captured (CTF)

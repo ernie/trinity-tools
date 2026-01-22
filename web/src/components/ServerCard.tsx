@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { ServerStatus, Player } from '../types'
 import { FlagIcon } from './FlagIcon'
 import { PlayerItem } from './PlayerItem'
+import { formatNumber } from '../utils'
 
 interface ServerCardProps {
   server: ServerStatus
@@ -95,7 +96,10 @@ function getDisplayTime(server: ServerStatus, timeLimitMinutes: number | null): 
 }
 
 // Get match state badge class and label
-function getMatchStateBadge(state?: string): { className: string; label: string } | null {
+function getMatchStateBadge(state?: string, isOvertime: boolean = false): { className: string; label: string } | null {
+  if (isOvertime) {
+    return { className: 'match-state-overtime', label: 'Overtime' }
+  }
   switch (state) {
     case 'warmup':
       return { className: 'match-state-warmup', label: 'Warmup' }
@@ -177,17 +181,20 @@ export function ServerCard({ server, newPlayers, isSelected, onSelect, onPlayerC
   const showTeamScores = isTeamGame(server.game_type) && server.team_scores
   const scoreLimit = getScoreLimit(server.game_type, server.server_vars)
   const timeLimit = getTimeLimit(server.server_vars)
-  const matchStateBadge = getMatchStateBadge(server.match_state)
 
   // Use interpolated time for smooth updates between server reports
   const { gameTimeMs, warmupRemaining } = useInterpolatedTime(server)
   const interpolatedServer = { ...server, game_time_ms: gameTimeMs, warmup_remaining: warmupRemaining }
   const displayTime = getDisplayTime(interpolatedServer, timeLimit)
+  const matchStateBadge = getMatchStateBadge(server.match_state, displayTime.isOvertime)
 
   // Determine dot color and tooltip based on server state
   const getStatusInfo = (): { className: string; tooltip: string } => {
     if (!server.online) {
       return { className: 'offline', tooltip: 'Server Offline' }
+    }
+    if (displayTime.isOvertime) {
+      return { className: 'overtime', tooltip: 'Overtime' }
     }
     switch (server.match_state) {
       case 'warmup':
@@ -232,7 +239,7 @@ export function ServerCard({ server, newPlayers, isSelected, onSelect, onPlayerC
           <span className="team-score red">
             <span className="team-label">{server.server_vars?.g_redteam || 'Red'}</span>
             <span className="score-row">
-              <span className="score-value">{server.team_scores.red}</span>
+              <span className="score-value">{formatNumber(server.team_scores.red)}</span>
               {server.flag_status && isCTF(server.game_type) && (() => {
                 const indicator = getFlagIndicator(server.flag_status.red)
                 return (
@@ -246,7 +253,7 @@ export function ServerCard({ server, newPlayers, isSelected, onSelect, onPlayerC
           <span className="team-score blue">
             <span className="team-label">{server.server_vars?.g_blueteam || 'Blue'}</span>
             <span className="score-row">
-              <span className="score-value">{server.team_scores.blue}</span>
+              <span className="score-value">{formatNumber(server.team_scores.blue)}</span>
               {server.flag_status && isCTF(server.game_type) && (() => {
                 const indicator = getFlagIndicator(server.flag_status.blue)
                 return (
@@ -260,11 +267,8 @@ export function ServerCard({ server, newPlayers, isSelected, onSelect, onPlayerC
           <span className="score-limit">
             {scoreLimit && <>/ {scoreLimit}</>}
             {scoreLimit && timeLimit && ' | '}
-            {timeLimit && displayTime.isOvertime && (
-              <><span className="overtime-indicator">OT</span><span className="overtime-time">{displayTime.time}</span></>
-            )}
-            {timeLimit && !displayTime.isOvertime && (
-              <><span className={displayTime.isWarmup ? 'warmup-time' : ''}>{displayTime.time}</span> / {timeLimit} min</>
+            {timeLimit && (
+              <><span className={displayTime.isOvertime ? 'overtime-time' : displayTime.isWarmup ? 'warmup-time' : ''}>{displayTime.time}</span> / {timeLimit} min</>
             )}
             {!timeLimit && (gameTimeMs > 0 || displayTime.isWarmup) && <>{scoreLimit && ' | '}<span className={displayTime.isWarmup ? 'warmup-time' : ''}>{displayTime.time}</span></>}
           </span>
@@ -275,11 +279,8 @@ export function ServerCard({ server, newPlayers, isSelected, onSelect, onPlayerC
         <div className="game-limits">
           {scoreLimit && <span>{scoreLimit}</span>}
           {scoreLimit && (timeLimit || gameTimeMs > 0 || displayTime.isWarmup) && <span className="limit-separator"> | </span>}
-          {timeLimit && displayTime.isOvertime && (
-            <span><span className="overtime-indicator">OT</span><span className="overtime-time">{displayTime.time}</span></span>
-          )}
-          {timeLimit && !displayTime.isOvertime && (
-            <span className={displayTime.isWarmup ? 'warmup-time' : ''}>{displayTime.time} / {timeLimit} min</span>
+          {timeLimit && (
+            <span className={displayTime.isOvertime ? 'overtime-time' : displayTime.isWarmup ? 'warmup-time' : ''}>{displayTime.time} / {timeLimit} min</span>
           )}
           {!timeLimit && (gameTimeMs > 0 || displayTime.isWarmup) && <span className={displayTime.isWarmup ? 'warmup-time' : ''}>{displayTime.time}</span>}
         </div>

@@ -63,7 +63,7 @@ export type EventType =
   | 'server_update'
   | 'match_start'
   | 'match_end'
-  | 'kill'
+  | 'frag'
   | 'flag_capture'
   | 'flag_taken'
   | 'flag_return'
@@ -223,7 +223,7 @@ export interface MatchPlayerSummary {
   player_id: number
   name: string
   clean_name: string
-  kills: number
+  frags: number
   deaths: number
   completed: boolean
   is_bot: boolean
@@ -303,7 +303,7 @@ export interface AggregatedStats {
   matches: number
   completed_matches: number
   uncompleted_matches: number
-  kills: number
+  frags: number
   deaths: number
   kd_ratio: number
   captures: number
@@ -358,7 +358,7 @@ export interface PlayerStatsResponse {
 export type TimePeriod = 'all' | 'day' | 'week' | 'month' | 'year'
 
 export type LeaderboardCategory =
-  | 'kills'
+  | 'frags'
   | 'deaths'
   | 'kd_ratio'
   | 'captures'
@@ -374,7 +374,7 @@ export type LeaderboardCategory =
 export interface LeaderboardEntry {
   rank: number
   player: PlayerProfile
-  total_kills: number
+  total_frags: number
   total_deaths: number
   total_matches: number
   completed_matches: number

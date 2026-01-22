@@ -899,7 +899,7 @@ func (s *Store) GetActiveMatch(ctx context.Context, serverID int64) (*domain.Mat
 // For bots: uses full primary key (match_id, player_guid_id, client_id) allowing multiple bot instances
 // For humans: one row per player per match, updates client_id on reconnect
 func (s *Store) FlushMatchPlayerStats(ctx context.Context, matchID, playerGUIDID int64, clientID int,
-	kills, deaths int, completed bool, score *int, team *int, model string, skill float64, victory bool,
+	frags, deaths int, completed bool, score *int, team *int, model string, skill float64, victory bool,
 	captures, flagReturns, assists, impressives, excellents, humiliations, defends int,
 	isBot bool, joinedLate bool, joinedAt time.Time) error {
 
@@ -907,12 +907,12 @@ func (s *Store) FlushMatchPlayerStats(ctx context.Context, matchID, playerGUIDID
 		// Bots: upsert by full primary key (allows multiple same-GUID bots)
 		_, err := s.db.ExecContext(ctx, `
 			INSERT INTO match_player_stats (
-				match_id, player_guid_id, client_id, kills, deaths, completed, score, team,
+				match_id, player_guid_id, client_id, frags, deaths, completed, score, team,
 				model, skill, victories, captures, flag_returns, assists, impressives,
 				excellents, humiliations, defends, joined_late, joined_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(match_id, player_guid_id, client_id) DO UPDATE SET
-				kills = kills + excluded.kills,
+				frags = frags + excluded.frags,
 				deaths = deaths + excluded.deaths,
 				completed = completed OR excluded.completed,
 				score = COALESCE(excluded.score, score),
@@ -927,7 +927,7 @@ func (s *Store) FlushMatchPlayerStats(ctx context.Context, matchID, playerGUIDID
 				excellents = excellents + excluded.excellents,
 				humiliations = humiliations + excluded.humiliations,
 				defends = defends + excluded.defends
-		`, matchID, playerGUIDID, clientID, kills, deaths, completed, score, team,
+		`, matchID, playerGUIDID, clientID, frags, deaths, completed, score, team,
 			model, skill, boolToInt(victory), captures, flagReturns, assists, impressives,
 			excellents, humiliations, defends, joinedLate, formatTimestamp(joinedAt))
 		return err
@@ -938,7 +938,7 @@ func (s *Store) FlushMatchPlayerStats(ctx context.Context, matchID, playerGUIDID
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE match_player_stats SET
 			client_id = ?,
-			kills = kills + ?,
+			frags = frags + ?,
 			deaths = deaths + ?,
 			completed = completed OR ?,
 			score = COALESCE(?, score),
@@ -954,7 +954,7 @@ func (s *Store) FlushMatchPlayerStats(ctx context.Context, matchID, playerGUIDID
 			humiliations = humiliations + ?,
 			defends = defends + ?
 		WHERE match_id = ? AND player_guid_id = ?
-	`, clientID, kills, deaths, completed, score, team, model, skill, boolToInt(victory),
+	`, clientID, frags, deaths, completed, score, team, model, skill, boolToInt(victory),
 		captures, flagReturns, assists, impressives, excellents, humiliations, defends,
 		matchID, playerGUIDID)
 	if err != nil {
@@ -967,11 +967,11 @@ func (s *Store) FlushMatchPlayerStats(ctx context.Context, matchID, playerGUIDID
 	// No existing row - insert new
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO match_player_stats (
-			match_id, player_guid_id, client_id, kills, deaths, completed, score, team,
+			match_id, player_guid_id, client_id, frags, deaths, completed, score, team,
 			model, skill, victories, captures, flag_returns, assists, impressives,
 			excellents, humiliations, defends, joined_late, joined_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, matchID, playerGUIDID, clientID, kills, deaths, completed, score, team,
+	`, matchID, playerGUIDID, clientID, frags, deaths, completed, score, team,
 		model, skill, boolToInt(victory), captures, flagReturns, assists, impressives,
 		excellents, humiliations, defends, joinedLate, formatTimestamp(joinedAt))
 	return err
@@ -1015,8 +1015,8 @@ func (s *Store) GetLeaderboard(ctx context.Context, category, period string, lim
 		orderBy = "total_flag_returns DESC"
 	case "victories":
 		orderBy = "total_victories DESC"
-	default: // "kills"
-		orderBy = "total_kills DESC"
+	default: // "frags"
+		orderBy = "total_frags DESC"
 	}
 
 	// For kd_ratio, require minimum 5 matches to filter outliers
@@ -1042,7 +1042,7 @@ func (s *Store) GetLeaderboard(ctx context.Context, category, period string, lim
 					WHERE pg3.player_id = p.id AND s.left_at IS NOT NULL
 				), 0) as total_playtime_seconds,
 				p.is_bot,
-				COALESCE(SUM(mps.kills), 0) as total_kills,
+				COALESCE(SUM(mps.frags), 0) as total_frags,
 				COALESCE(SUM(mps.deaths), 0) as total_deaths,
 				COUNT(DISTINCT mps.match_id) as total_matches,
 				COUNT(DISTINCT CASE WHEN mps.completed = 1 THEN mps.match_id END) as completed_matches,
@@ -1056,8 +1056,8 @@ func (s *Store) GetLeaderboard(ctx context.Context, category, period string, lim
 				COALESCE(SUM(mps.defends), 0) as total_defends,
 				COALESCE(SUM(mps.victories), 0) as total_victories,
 				CASE WHEN SUM(mps.deaths) > 0
-					THEN CAST(SUM(mps.kills) AS REAL) / SUM(mps.deaths)
-					ELSE COALESCE(SUM(mps.kills), 0) END as kd_ratio,
+					THEN CAST(SUM(mps.frags) AS REAL) / SUM(mps.deaths)
+					ELSE COALESCE(SUM(mps.frags), 0) END as kd_ratio,
 				(SELECT mps2.model FROM match_player_stats mps2
 					JOIN player_guids pg2 ON mps2.player_guid_id = pg2.id
 					JOIN matches m2 ON mps2.match_id = m2.id
@@ -1104,7 +1104,7 @@ func (s *Store) GetLeaderboard(ctx context.Context, category, period string, lim
 					WHERE pg3.player_id = p.id AND s.left_at IS NOT NULL
 				), 0) as total_playtime_seconds,
 				p.is_bot,
-				COALESCE(SUM(mps.kills), 0) as total_kills,
+				COALESCE(SUM(mps.frags), 0) as total_frags,
 				COALESCE(SUM(mps.deaths), 0) as total_deaths,
 				COUNT(DISTINCT mps.match_id) as total_matches,
 				COUNT(DISTINCT CASE WHEN mps.completed = 1 THEN mps.match_id END) as completed_matches,
@@ -1118,8 +1118,8 @@ func (s *Store) GetLeaderboard(ctx context.Context, category, period string, lim
 				COALESCE(SUM(mps.defends), 0) as total_defends,
 				COALESCE(SUM(mps.victories), 0) as total_victories,
 				CASE WHEN SUM(mps.deaths) > 0
-					THEN CAST(SUM(mps.kills) AS REAL) / SUM(mps.deaths)
-					ELSE COALESCE(SUM(mps.kills), 0) END as kd_ratio,
+					THEN CAST(SUM(mps.frags) AS REAL) / SUM(mps.deaths)
+					ELSE COALESCE(SUM(mps.frags), 0) END as kd_ratio,
 				(SELECT mps2.model FROM match_player_stats mps2
 					JOIN player_guids pg2 ON mps2.player_guid_id = pg2.id
 					JOIN matches m2 ON mps2.match_id = m2.id
@@ -1157,7 +1157,7 @@ func (s *Store) GetLeaderboard(ctx context.Context, category, period string, lim
 		if err := rows.Scan(
 			&e.Player.ID, &e.Player.Name, &e.Player.CleanName,
 			&e.Player.FirstSeen, &e.Player.LastSeen, &e.Player.TotalPlaytimeSeconds, &e.Player.IsBot,
-			&e.TotalKills, &e.TotalDeaths, &e.TotalMatches, &e.CompletedMatches, &e.UncompletedMatches,
+			&e.TotalFrags, &e.TotalDeaths, &e.TotalMatches, &e.CompletedMatches, &e.UncompletedMatches,
 			&e.Captures, &e.FlagReturns, &e.Assists, &e.Impressives, &e.Excellents,
 			&e.Humiliations, &e.Defends, &e.Victories,
 			&e.KDRatio, &model, &skill,
@@ -1235,7 +1235,7 @@ func (s *Store) getPlayerStats(ctx context.Context, playerID int64, period strin
 				COUNT(DISTINCT mps.match_id) as matches,
 				COUNT(DISTINCT CASE WHEN mps.completed = 1 THEN mps.match_id END) as completed_matches,
 				COUNT(DISTINCT CASE WHEN mps.completed = 0 THEN mps.match_id END) as uncompleted_matches,
-				COALESCE(SUM(mps.kills), 0) as kills,
+				COALESCE(SUM(mps.frags), 0) as frags,
 				COALESCE(SUM(mps.deaths), 0) as deaths,
 				COALESCE(SUM(mps.captures), 0) as captures,
 				COALESCE(SUM(mps.flag_returns), 0) as flag_returns,
@@ -1256,7 +1256,7 @@ func (s *Store) getPlayerStats(ctx context.Context, playerID int64, period strin
 				COUNT(DISTINCT mps.match_id) as matches,
 				COUNT(DISTINCT CASE WHEN mps.completed = 1 THEN mps.match_id END) as completed_matches,
 				COUNT(DISTINCT CASE WHEN mps.completed = 0 THEN mps.match_id END) as uncompleted_matches,
-				COALESCE(SUM(mps.kills), 0) as kills,
+				COALESCE(SUM(mps.frags), 0) as frags,
 				COALESCE(SUM(mps.deaths), 0) as deaths,
 				COALESCE(SUM(mps.captures), 0) as captures,
 				COALESCE(SUM(mps.flag_returns), 0) as flag_returns,
@@ -1278,7 +1278,7 @@ func (s *Store) getPlayerStats(ctx context.Context, playerID int64, period strin
 
 	err = s.db.QueryRowContext(ctx, query, args...).Scan(
 		&stats.Matches, &stats.CompletedMatches, &stats.UncompletedMatches,
-		&stats.Kills, &stats.Deaths,
+		&stats.Frags, &stats.Deaths,
 		&stats.Captures, &stats.FlagReturns, &stats.Assists,
 		&stats.Impressives, &stats.Excellents,
 		&stats.Humiliations, &stats.Defends, &stats.Victories,
@@ -1289,9 +1289,9 @@ func (s *Store) getPlayerStats(ctx context.Context, playerID int64, period strin
 
 	// Calculate K/D ratio
 	if stats.Deaths > 0 {
-		stats.KDRatio = float64(stats.Kills) / float64(stats.Deaths)
-	} else if stats.Kills > 0 {
-		stats.KDRatio = float64(stats.Kills)
+		stats.KDRatio = float64(stats.Frags) / float64(stats.Deaths)
+	} else if stats.Frags > 0 {
+		stats.KDRatio = float64(stats.Frags)
 	}
 
 	// Get name history
@@ -1488,12 +1488,12 @@ func (s *Store) attachPlayersToMatches(ctx context.Context, matches []domain.Mat
 
 	// Get player stats for all matches
 	playerRows, err := s.db.QueryContext(ctx, `
-		SELECT mps.match_id, p.id, pg.name, pg.clean_name, mps.kills, mps.deaths, mps.completed, p.is_bot, mps.skill, mps.score, mps.team, mps.model, mps.impressives, mps.excellents, mps.humiliations, mps.defends, mps.captures, mps.assists
+		SELECT mps.match_id, p.id, pg.name, pg.clean_name, mps.frags, mps.deaths, mps.completed, p.is_bot, mps.skill, mps.score, mps.team, mps.model, mps.impressives, mps.excellents, mps.humiliations, mps.defends, mps.captures, mps.assists
 		FROM match_player_stats mps
 		JOIN player_guids pg ON mps.player_guid_id = pg.id
 		JOIN players p ON pg.player_id = p.id
 		WHERE mps.match_id IN (`+strings.Join(placeholders, ",")+`)
-		ORDER BY mps.score DESC NULLS LAST, mps.kills DESC
+		ORDER BY mps.score DESC NULLS LAST, mps.frags DESC
 	`, args...)
 	if err != nil {
 		return nil, err
@@ -1728,12 +1728,12 @@ func (s *Store) GetMatchSummaryByID(ctx context.Context, matchID int64) (*domain
 
 	// Get player stats for this match
 	playerRows, err := s.db.QueryContext(ctx, `
-		SELECT p.id, pg.name, pg.clean_name, mps.kills, mps.deaths, mps.completed, p.is_bot, mps.skill, mps.score, mps.team, mps.model, mps.impressives, mps.excellents, mps.humiliations, mps.defends, mps.captures, mps.assists
+		SELECT p.id, pg.name, pg.clean_name, mps.frags, mps.deaths, mps.completed, p.is_bot, mps.skill, mps.score, mps.team, mps.model, mps.impressives, mps.excellents, mps.humiliations, mps.defends, mps.captures, mps.assists
 		FROM match_player_stats mps
 		JOIN player_guids pg ON mps.player_guid_id = pg.id
 		JOIN players p ON pg.player_id = p.id
 		WHERE mps.match_id = ?
-		ORDER BY mps.score DESC NULLS LAST, mps.kills DESC
+		ORDER BY mps.score DESC NULLS LAST, mps.frags DESC
 	`, matchID)
 	if err != nil {
 		return nil, err

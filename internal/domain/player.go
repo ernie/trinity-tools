@@ -44,7 +44,7 @@ type Session struct {
 // PlayerStats holds aggregated stats for a player (for leaderboards)
 type PlayerStats struct {
 	Player        Player  `json:"player"`
-	TotalKills    int64   `json:"total_kills"`
+	TotalFrags    int64   `json:"total_frags"`
 	TotalDeaths   int64   `json:"total_deaths"`
 	TotalMatches  int64   `json:"total_matches"`
 	KDRatio       float64 `json:"kd_ratio"`
@@ -56,7 +56,7 @@ type PlayerStats struct {
 type LeaderboardEntry struct {
 	Rank         int     `json:"rank"`
 	Player       Player  `json:"player"`
-	TotalKills   int64   `json:"total_kills"`
+	TotalFrags   int64   `json:"total_frags"`
 	TotalDeaths  int64   `json:"total_deaths"`
 	TotalMatches       int64   `json:"total_matches"`
 	CompletedMatches   int64   `json:"completed_matches"`
@@ -94,7 +94,7 @@ type AggregatedStats struct {
 	Matches            int64   `json:"matches"`
 	CompletedMatches   int64   `json:"completed_matches"`
 	UncompletedMatches int64   `json:"uncompleted_matches"`
-	Kills              int64   `json:"kills"`
+	Frags              int64   `json:"frags"`
 	Deaths             int64   `json:"deaths"`
 	KDRatio            float64 `json:"kd_ratio"`
 	Captures           int64   `json:"captures"`

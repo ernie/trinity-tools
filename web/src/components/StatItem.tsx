@@ -1,3 +1,5 @@
+import { formatNumber } from "../utils"
+
 export interface StatItemProps {
   label: string
   value: number | string
@@ -7,11 +9,14 @@ export interface StatItemProps {
 }
 
 export function StatItem({ label, value, className, subscript, title }: StatItemProps) {
+  const displayValue = typeof value === 'number' ? formatNumber(value) : value
+  const displaySubscript = subscript !== undefined && subscript > 0 ? formatNumber(subscript) : null
+
   return (
     <div className="stat-item" title={title}>
       <div className={`stat-value ${className ?? ''}`}>
-        {value}
-        {subscript !== undefined && subscript > 0 && <sub>{subscript}</sub>}
+        {displayValue}
+        {displaySubscript && <sub>{displaySubscript}</sub>}
       </div>
       <div className="stat-label">{label}</div>
     </div>

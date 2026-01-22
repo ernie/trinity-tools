@@ -247,7 +247,7 @@ func (r *Router) handleGetLeaderboard(w http.ResponseWriter, req *http.Request) 
 
 	category := req.URL.Query().Get("category")
 	if category == "" {
-		category = "kills"
+		category = "frags"
 	}
 	if !validateCategory(category) {
 		writeError(w, http.StatusBadRequest, "invalid category")

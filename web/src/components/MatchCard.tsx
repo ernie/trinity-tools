@@ -6,6 +6,7 @@ import { ColoredText } from './ColoredText'
 import { MedalIcon } from './MedalIcon'
 import { PlayerPortrait } from './PlayerPortrait'
 import { VerifiedBadge } from './VerifiedBadge'
+import { formatNumber } from '../utils'
 
 export function formatDuration(startedAt: string, endedAt: string): string {
   const start = new Date(startedAt)
@@ -135,11 +136,11 @@ export function MatchCard({ match, onPlayerClick, highlightPlayerId, showPermali
             )}
             <div className="team-score red">
               <span className="team-label">Red</span>
-              <span className="score-value">{match.red_score}</span>
+              <span className="score-value">{formatNumber(match.red_score)}</span>
             </div>
             <div className="team-score blue">
               <span className="team-label">Blue</span>
-              <span className="score-value">{match.blue_score}</span>
+              <span className="score-value">{formatNumber(match.blue_score)}</span>
             </div>
             {match.blue_score > match.red_score && (
               <span className="victory-badge right">
@@ -252,12 +253,12 @@ function MatchPlayerRow({ player, showTeam, isWinner, highlightPlayerId, onPlaye
       </span>
       <span className="player-stats">
         <span className="kd">
-          <span className="kills">{player.kills}</span>
+          <span className="frags">{formatNumber(player.frags)}</span>
           <span className="sep">/</span>
-          <span className="deaths">{player.deaths}</span>
+          <span className="deaths">{formatNumber(player.deaths)}</span>
         </span>
         {player.score != null && (
-          <span className="score">{player.score}</span>
+          <span className="score">{formatNumber(player.score)}</span>
         )}
       </span>
     </li>

@@ -15,7 +15,7 @@ var validGameTypes = map[string]bool{
 }
 
 var validCategories = map[string]bool{
-	"kills": true, "deaths": true, "kd_ratio": true, "matches": true,
+	"frags": true, "deaths": true, "kd_ratio": true, "matches": true,
 	"captures": true, "flag_returns": true, "assists": true,
 	"impressives": true, "excellents": true, "humiliations": true,
 	"defends": true, "victories": true,

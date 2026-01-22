@@ -318,7 +318,7 @@ WebSocket endpoint for real-time updates.
 - `player_leave` - Player disconnected
 - `match_start` - New match started
 - `match_end` - Match ended
-- `kill` - Frag event
+- `frag` - Frag event
 
 **Example message:**
 

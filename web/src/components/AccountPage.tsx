@@ -227,7 +227,7 @@ export function AccountPage() {
                           : undefined}
                       />
                       <StatItem label="K/D" value={stats.stats.kd_ratio.toFixed(2)} />
-                      <StatItem label="Kills" value={stats.stats.kills} className="kills" />
+                      <StatItem label="Frags" value={stats.stats.frags} className="frags" />
                       <StatItem label="Deaths" value={stats.stats.deaths} className="deaths" />
                       <StatItem label="Victories" value={stats.stats.victories} />
                       <StatItem label="Excellent" value={stats.stats.excellents} />

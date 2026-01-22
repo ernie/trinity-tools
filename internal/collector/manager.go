@@ -63,7 +63,7 @@ type clientState struct {
 	skill              float64 // bot skill level (1-5), 0 if human
 	team               int
 	joinedAt           time.Time
-	kills              int             // kills accumulated this session (flushed on leave/match end)
+	frags              int             // frags accumulated this session (flushed on leave/match end)
 	deaths             int             // deaths accumulated this session (flushed on leave/match end)
 	impressives        int             // impressive awards this match
 	excellents         int             // excellent awards this match
@@ -594,7 +594,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 			// If pendingExit is set, the match is over (intermission) so player completed it
 			// Players who leave mid-match don't get victory credit
 			// Skip pure spectators (team 3 with no kills/deaths)
-			if client.playerGUID > 0 && (client.team != 3 || client.kills > 0 || client.deaths > 0) {
+			if client.playerGUID > 0 && (client.team != 3 || client.frags > 0 || client.deaths > 0) {
 				if matchID := m.getMatchID(ctx, state); matchID > 0 {
 					completed := state.pendingExit != nil
 					var team *int
@@ -604,7 +604,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 					// Determine if player joined late (after warmup ended)
 					joinedLate := state.matchState == "active" && client.joinedAt.After(state.match.StartedAt)
 					if err := m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, data.ClientID,
-						client.kills, client.deaths, completed, client.score, team, client.model, client.skill, false,
+						client.frags, client.deaths, completed, client.score, team, client.model, client.skill, false,
 						client.captures, client.flagReturns, client.assists, client.impressives,
 						client.excellents, client.humiliations, client.defends,
 						client.isBot, joinedLate, client.joinedAt); err != nil {
@@ -629,15 +629,15 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 			delete(state.clients, data.ClientID)
 		}
 
-	case EventTypeKill:
-		data := event.Data.(KillEventData)
+	case EventTypeFrag:
+		data := event.Data.(FragEventData)
 
-		// Only track kills/deaths during active match (not warmup/waiting/intermission)
+		// Only track frags/deaths during active match (not warmup/waiting/intermission)
 		// Note: We track stats even during replay so we can flush them if match wasn't completed
 		if state.matchState == "active" {
-			// Increment in-memory kill count for killer (human or bot)
-			if killer, ok := state.clients[data.KillerID]; ok {
-				killer.kills++
+			// Increment in-memory frag count for fragger (human or bot)
+			if fragger, ok := state.clients[data.FraggerID]; ok {
+				fragger.frags++
 			}
 
 			// Increment in-memory death count for victim (human or bot)
@@ -645,14 +645,14 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 				victim.deaths++
 			}
 
-			// Track gauntlet kill victim for humiliation award (MOD_GAUNTLET = 2)
+			// Track gauntlet frag victim for humiliation award (MOD_GAUNTLET = 2)
 			if data.WeaponID == 2 {
-				if killer, ok := state.clients[data.KillerID]; ok {
+				if fragger, ok := state.clients[data.FraggerID]; ok {
 					var victimPlayerID int64
 					if victim, ok := state.clients[data.VictimID]; ok {
 						victimPlayerID = victim.playerID
 					}
-					killer.lastGauntletVictim = &gauntletVictim{
+					fragger.lastGauntletVictim = &gauntletVictim{
 						name:     data.VictimName,
 						playerID: victimPlayerID,
 					}
@@ -660,25 +660,25 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 			}
 		}
 
-		// Emit kill event (skip in replay mode)
+		// Emit frag event (skip in replay mode)
 		if !replayMode {
-			var killerPlayerID, victimPlayerID *int64
-			if killer, ok := state.clients[data.KillerID]; ok && killer.playerID > 0 {
-				killerPlayerID = &killer.playerID
+			var fraggerPlayerID, victimPlayerID *int64
+			if fragger, ok := state.clients[data.FraggerID]; ok && fragger.playerID > 0 {
+				fraggerPlayerID = &fragger.playerID
 			}
 			if victim, ok := state.clients[data.VictimID]; ok && victim.playerID > 0 {
 				victimPlayerID = &victim.playerID
 			}
 			m.emitEvent(domain.Event{
-				Type:      domain.EventKill,
+				Type:      domain.EventFrag,
 				ServerID:  serverID,
 				Timestamp: event.Timestamp,
-				Data: domain.KillEvent{
-					Killer:         data.KillerName,
-					Victim:         data.VictimName,
-					Weapon:         data.Weapon,
-					KillerPlayerID: killerPlayerID,
-					VictimPlayerID: victimPlayerID,
+				Data: domain.FragEvent{
+					Fragger:         data.FraggerName,
+					Victim:          data.VictimName,
+					Weapon:          data.Weapon,
+					FraggerPlayerID: fraggerPlayerID,
+					VictimPlayerID:  victimPlayerID,
 				},
 			})
 		}
@@ -735,7 +735,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 						// Match exists and is open - flush stats and end it
 						maxFFAScore := computeMaxScore(state.clients)
 						for clientID, client := range state.clients {
-							if client.playerGUID > 0 && (client.team != 3 || client.kills > 0 || client.deaths > 0) {
+							if client.playerGUID > 0 && (client.team != 3 || client.frags > 0 || client.deaths > 0) {
 								var team *int
 								if client.team > 0 {
 									team = &client.team
@@ -743,7 +743,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 								victory := isMatchWinner(client, state, maxFFAScore)
 								joinedLate := client.joinedAt.After(existing.StartedAt)
 								m.store.FlushMatchPlayerStats(ctx, existing.ID, client.playerGUID, clientID,
-									client.kills, client.deaths, true, client.score, team, client.model, client.skill, victory,
+									client.frags, client.deaths, true, client.score, team, client.model, client.skill, victory,
 									client.captures, client.flagReturns, client.assists, client.impressives,
 									client.excellents, client.humiliations, client.defends,
 									client.isBot, joinedLate, client.joinedAt)
@@ -769,7 +769,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 								victory := isMatchWinner(client, state, maxFFAScore)
 								joinedLate := state.match != nil && client.joinedAt.After(state.match.StartedAt)
 								if err := m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, clientID,
-									client.kills, client.deaths, true, client.score, team, client.model, client.skill, victory,
+									client.frags, client.deaths, true, client.score, team, client.model, client.skill, victory,
 									client.captures, client.flagReturns, client.assists, client.impressives,
 									client.excellents, client.humiliations, client.defends,
 									client.isBot, joinedLate, client.joinedAt); err != nil {
@@ -791,7 +791,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 								}
 								joinedLate := state.match != nil && client.joinedAt.After(state.match.StartedAt)
 								m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, clientID,
-									client.kills, client.deaths, false, nil, team, client.model, client.skill, false,
+									client.frags, client.deaths, false, nil, team, client.model, client.skill, false,
 									client.captures, client.flagReturns, client.assists, client.impressives,
 									client.excellents, client.humiliations, client.defends,
 									client.isBot, joinedLate, client.joinedAt)
@@ -968,12 +968,12 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 					joinedLate := state.matchState == "active" && state.match != nil && client.joinedAt.After(state.match.StartedAt)
 					// Flush with completed=false (switched teams mid-match), no victory
 					m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, data.ClientID,
-						client.kills, client.deaths, false, client.score, team, client.model, client.skill, false,
+						client.frags, client.deaths, false, client.score, team, client.model, client.skill, false,
 						client.captures, client.flagReturns, client.assists, client.impressives,
 						client.excellents, client.humiliations, client.defends,
 						client.isBot, joinedLate, client.joinedAt)
 					// Reset in-memory counters after flushing
-					client.kills = 0
+					client.frags = 0
 					client.deaths = 0
 					client.captures = 0
 					client.flagReturns = 0

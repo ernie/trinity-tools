@@ -28,7 +28,7 @@ const (
 	EventTypeClientUserinfo   = "client_userinfo"
 	EventTypeClientBegin      = "client_begin"
 	EventTypeClientDisconnect = "client_disconnect"
-	EventTypeKill             = "kill"
+	EventTypeFrag             = "frag"
 	EventTypeExit             = "exit"
 	EventTypeScore            = "score"
 	EventTypeShutdown         = "shutdown"
@@ -80,13 +80,13 @@ type ClientDisconnectData struct {
 	GUID     string // optional, only present for human players (Trinity)
 }
 
-type KillEventData struct {
-	KillerID   int
-	VictimID   int
-	WeaponID   int
-	KillerName string
-	VictimName string
-	Weapon     string
+type FragEventData struct {
+	FraggerID   int
+	VictimID    int
+	WeaponID    int
+	FraggerName string
+	VictimName  string
+	Weapon      string
 }
 
 type ExitEventData struct {
@@ -228,7 +228,7 @@ var (
 	clientUserinfoRegex   = regexp.MustCompile(`^ClientUserinfoChanged: (\d+) (.+)$`)
 	clientBeginRegex      = regexp.MustCompile(`^ClientBegin: (\d+)$`)
 	clientDisconnectRegex = regexp.MustCompile(`^ClientDisconnect: (\d+)(?: (.+))?$`)
-	killRegex             = regexp.MustCompile(`^Kill: (\d+) (\d+) (\d+): (.+) killed (.+) by (.+)$`)
+	fragRegex             = regexp.MustCompile(`^Kill: (\d+) (\d+) (\d+): (.+) killed (.+) by (.+)$`)
 	exitRegex             = regexp.MustCompile(`^Exit: (.+)$`)
 	scoreRegex            = regexp.MustCompile(`^score: (-?\d+)\s+ping: (\d+)\s+team: (\d+)\s+client: (\d+) (.+)$`)
 	shutdownRegex         = regexp.MustCompile(`^ShutdownGame:(.*)$`)
@@ -562,18 +562,18 @@ func ParseLine(line string) (*LogEvent, error) {
 		return event, nil
 	}
 
-	if match := killRegex.FindStringSubmatch(content); match != nil {
-		killerID, _ := strconv.Atoi(match[1])
+	if match := fragRegex.FindStringSubmatch(content); match != nil {
+		fraggerID, _ := strconv.Atoi(match[1])
 		victimID, _ := strconv.Atoi(match[2])
 		weaponID, _ := strconv.Atoi(match[3])
-		event.Type = EventTypeKill
-		event.Data = KillEventData{
-			KillerID:   killerID,
-			VictimID:   victimID,
-			WeaponID:   weaponID,
-			KillerName: match[4],
-			VictimName: match[5],
-			Weapon:     match[6],
+		event.Type = EventTypeFrag
+		event.Data = FragEventData{
+			FraggerID:   fraggerID,
+			VictimID:    victimID,
+			WeaponID:    weaponID,
+			FraggerName: match[4],
+			VictimName:  match[5],
+			Weapon:      match[6],
 		}
 		return event, nil
 	}
