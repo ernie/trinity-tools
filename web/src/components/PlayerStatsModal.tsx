@@ -93,18 +93,21 @@ function StatsDisplay({ stats }: { stats: PlayerStatsResponse }) {
         <StatItem label="Defense" value={stats.stats.defends} />
       </div>
 
-      {stats.names && stats.names.filter((n: PlayerName) => n.name !== stats.player.name).length > 0 && (
-        <div className="also-known-as">
-          <h4>Also known as</h4>
-          <div className="name-list">
-            {stats.names.filter((n: PlayerName) => n.name !== stats.player.name).slice(0, 5).map((n: PlayerName, i: number) => (
-              <span key={i} className="aka-name">
-                <ColoredText text={n.name} />
-              </span>
-            ))}
+      {stats.names && (() => {
+        const uniqueNames = [...new Set(stats.names.map((n: PlayerName) => n.name))].filter(name => name !== stats.player.name)
+        return uniqueNames.length > 0 && (
+          <div className="also-known-as">
+            <h4>Also known as</h4>
+            <div className="name-list">
+              {uniqueNames.slice(0, 5).map((name: string, i: number) => (
+                <span key={i} className="aka-name">
+                  <ColoredText text={name} />
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <div className="modal-footer">
         <Link to={`/players/${stats.player.id}`} className="view-profile-link">

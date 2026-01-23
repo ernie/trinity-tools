@@ -268,18 +268,21 @@ export function PlayersPage() {
                 <StatItem label="Defense" value={stats.stats.defends} />
               </div>
 
-              {stats.names && stats.names.filter(n => n.name !== stats.player.name).length > 0 && (
-                <div className="also-known-as">
-                  <h4>Also known as</h4>
-                  <div className="name-list">
-                    {stats.names.filter(n => n.name !== stats.player.name).slice(0, 9).map((n, i) => (
-                      <span key={i} className="aka-name">
-                        <ColoredText text={n.name} />
-                      </span>
-                    ))}
+              {stats.names && (() => {
+                const uniqueNames = [...new Set(stats.names.map(n => n.name))].filter(name => name !== stats.player.name)
+                return uniqueNames.length > 0 && (
+                  <div className="also-known-as">
+                    <h4>Also known as</h4>
+                    <div className="name-list">
+                      {uniqueNames.slice(0, 9).map((name, i) => (
+                        <span key={i} className="aka-name">
+                          <ColoredText text={name} />
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Admin: GUIDs section */}
               {auth.isAuthenticated && stats.player.guids && stats.player.guids.length > 0 && (
