@@ -954,7 +954,18 @@ func extractPortraitsFromPk3(pk3Path, outputDir, displayPath string) (int, error
 		if len(parts) < 4 {
 			continue
 		}
-		model := strings.ToLower(parts[2])
+
+		var model string
+		if strings.ToLower(parts[2]) == "heads" {
+			// Team Arena heads: models/players/heads/<name>/icon_*.tga
+			if len(parts) < 5 {
+				continue
+			}
+			model = strings.ToLower(parts[3])
+		} else {
+			// Standard: models/players/<model>/icon_*.tga
+			model = strings.ToLower(parts[2])
+		}
 
 		// Create model subdirectory
 		modelDir := filepath.Join(outputDir, model)
