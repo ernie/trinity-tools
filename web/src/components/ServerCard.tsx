@@ -115,7 +115,8 @@ function getMatchStateBadge(state?: string, isOvertime: boolean = false): { clas
 }
 
 // Hook to interpolate game time between server updates
-function useInterpolatedTime(server: ServerStatus): { gameTimeMs: number; warmupRemaining: number | undefined } {
+// timeLimitMinutes is used to clamp interpolated time so we don't falsely flag overtime
+function useInterpolatedTime(server: ServerStatus, timeLimitMinutes: number | null): { gameTimeMs: number; warmupRemaining: number | undefined } {
   const [offset, setOffset] = useState(0)
   const lastUpdateRef = useRef<string>(server.last_updated)
   const baseGameTimeRef = useRef(server.game_time_ms)
@@ -146,9 +147,19 @@ function useInterpolatedTime(server: ServerStatus): { gameTimeMs: number; warmup
   }, [server.match_state, server.last_updated])
 
   // Calculate interpolated values
-  const gameTimeMs = server.match_state === 'active'
+  let gameTimeMs = server.match_state === 'active'
     ? baseGameTimeRef.current + offset
     : server.game_time_ms
+
+  // Clamp interpolated time at the time limit so we don't falsely flag overtime.
+  // Overtime should only be shown when the actual server status reports it.
+  if (timeLimitMinutes && timeLimitMinutes > 0 && server.match_state === 'active') {
+    const timeLimitMs = timeLimitMinutes * 60 * 1000
+    // Only clamp if the base time from server is still under the limit
+    if (baseGameTimeRef.current <= timeLimitMs) {
+      gameTimeMs = Math.min(gameTimeMs, timeLimitMs)
+    }
+  }
 
   const warmupRemaining = server.match_state === 'warmup' && baseWarmupRef.current !== undefined
     ? Math.max(0, baseWarmupRef.current - offset)
@@ -183,7 +194,7 @@ export function ServerCard({ server, newPlayers, isSelected, onSelect, onPlayerC
   const timeLimit = getTimeLimit(server.server_vars)
 
   // Use interpolated time for smooth updates between server reports
-  const { gameTimeMs, warmupRemaining } = useInterpolatedTime(server)
+  const { gameTimeMs, warmupRemaining } = useInterpolatedTime(server, timeLimit)
   const interpolatedServer = { ...server, game_time_ms: gameTimeMs, warmup_remaining: warmupRemaining }
   const displayTime = getDisplayTime(interpolatedServer, timeLimit)
   const matchStateBadge = getMatchStateBadge(server.match_state, displayTime.isOvertime)
