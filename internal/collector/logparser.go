@@ -47,6 +47,7 @@ const (
 	EventTypeSay              = "say"
 	EventTypeSayTeam          = "say_team"
 	EventTypeTell             = "tell"
+	EventTypeCommand          = "command"
 	EventTypeSayRcon          = "say_rcon"
 	EventTypeServerStartup    = "server_startup"
 	EventTypeServerShutdown   = "server_shutdown"
@@ -197,6 +198,12 @@ type SayData struct {
 	Message  string
 }
 
+type CommandData struct {
+	ClientID int
+	Name     string
+	Command  string
+}
+
 type SayTeamData struct {
 	ClientID int
 	Name     string
@@ -249,6 +256,7 @@ var (
 	sayRegex              = regexp.MustCompile(`^Say: (\d+) "(.+)": (.+)$`)
 	sayTeamRegex          = regexp.MustCompile(`^SayTeam: (\d+) "(.+)": (.+)$`)
 	tellRegex             = regexp.MustCompile(`^Tell: (\d+) (\d+) "(.+)" "(.+)": (.+)$`)
+	commandRegex          = regexp.MustCompile(`^Command: (\d+) "(.+)": (.+)$`)
 	sayRconRegex          = regexp.MustCompile(`^SayRcon: (.+)$`)
 	serverStartupRegex    = regexp.MustCompile(`^ServerStartup:$`)
 	serverShutdownRegex   = regexp.MustCompile(`^ServerShutdown:$`)
@@ -817,6 +825,17 @@ func ParseLine(line string) (*LogEvent, error) {
 			FromName:     match[3],
 			ToName:       match[4],
 			Message:      match[5],
+		}
+		return event, nil
+	}
+
+	if match := commandRegex.FindStringSubmatch(content); match != nil {
+		clientID, _ := strconv.Atoi(match[1])
+		event.Type = EventTypeCommand
+		event.Data = CommandData{
+			ClientID: clientID,
+			Name:     match[2],
+			Command:  match[3],
 		}
 		return event, nil
 	}

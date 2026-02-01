@@ -1079,21 +1079,17 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 			}
 		}
 
+	case EventTypeCommand:
+		data := event.Data.(CommandData)
+		// Only process commands after startup is complete (skip during log replay)
+		if !replayMode && m.startupComplete {
+			m.handleCommand(ctx, serverID, state, data.ClientID, data.Command)
+		}
+
 	case EventTypeSay:
 		data := event.Data.(SayData)
 		// Skip events in replay mode
 		if !replayMode {
-			// Check for !link command - only process after startup is complete
-			// This prevents blocking during log replay at startup
-			if len(data.Message) >= 5 && data.Message[:5] == "!link" {
-				if m.startupComplete {
-					log.Printf("Detected !link command from client %d: %q", data.ClientID, data.Message)
-					m.handleLinkCommand(ctx, serverID, state, data.ClientID, data.Message)
-				} else {
-					log.Printf("Ignoring !link command during startup from client %d", data.ClientID)
-				}
-			}
-
 			var playerID *int64
 			if client, ok := state.clients[data.ClientID]; ok && client.playerID > 0 {
 				playerID = &client.playerID
@@ -1362,21 +1358,39 @@ func (m *ServerManager) emitEvent(event domain.Event) {
 	}
 }
 
-// handleLinkCommand processes a !link command from a player
-func (m *ServerManager) handleLinkCommand(ctx context.Context, serverID int64, state *serverState, clientID int, message string) {
+// handleCommand dispatches a command to the appropriate handler
+func (m *ServerManager) handleCommand(ctx context.Context, serverID int64, state *serverState, clientID int, command string) {
+	// Parse command name and args: "link 12345678" -> cmd="link", args="12345678"
+	cmd := command
+	args := ""
+	if idx := indexSpace(command); idx != -1 {
+		cmd = command[:idx]
+		args = trimSpace(command[idx+1:])
+	}
+
+	log.Printf("Command from client %d: cmd=%q args=%q", clientID, cmd, args)
+
+	switch cmd {
+	case "link":
+		m.handleLinkCommand(ctx, serverID, state, clientID, args)
+	default:
+		m.sendTell(serverID, clientID, "^1Unknown command: ^7"+cmd)
+	}
+}
+
+// handleLinkCommand processes a link command from a player
+func (m *ServerManager) handleLinkCommand(ctx context.Context, serverID int64, state *serverState, clientID int, args string) {
 	client, ok := state.clients[clientID]
 	if !ok {
-		log.Printf("!link: client %d not found in state", clientID)
+		log.Printf("link: client %d not found in state", clientID)
 		return
 	}
 
-	// Extract code from message: "!link 12345678" or "!link12345678"
-	code := message[5:] // Skip "!link"
-	code = trimSpace(code)
+	code := trimSpace(args)
 
-	// Validate code format (8 digits)
-	if len(code) != 8 || !isNumeric(code) {
-		m.sendTell(serverID, clientID, "^3Usage: ^7!link <8-digit-code>")
+	// Validate code format (6 digits)
+	if len(code) != 6 || !isNumeric(code) {
+		m.sendTell(serverID, clientID, "^3Usage: ^7!link <6-digit-code>")
 		return
 	}
 
@@ -1519,6 +1533,16 @@ func trimSpace(s string) string {
 		end--
 	}
 	return s[start:end]
+}
+
+// indexSpace returns the index of the first space character, or -1 if not found
+func indexSpace(s string) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == ' ' || s[i] == '\t' {
+			return i
+		}
+	}
+	return -1
 }
 
 // linkCodeCleanupLoop periodically removes expired link codes
