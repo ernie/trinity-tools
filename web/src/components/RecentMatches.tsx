@@ -13,7 +13,7 @@ export function RecentMatches({ onPlayerClick }: RecentMatchesProps) {
   useEffect(() => {
     async function fetchMatches() {
       try {
-        const res = await fetch('/api/matches?limit=6')
+        const res = await fetch('/api/matches?limit=8')
         if (res.ok) {
           const data = await res.json()
           setMatches(data ?? [])

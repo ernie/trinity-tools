@@ -379,3 +379,23 @@ func (r *Router) handleGetPlayerMatches(w http.ResponseWriter, req *http.Request
 
 	writeJSON(w, http.StatusOK, matches)
 }
+
+// handleGetPlayerSessions returns recent sessions for a specific player (admin only)
+func (r *Router) handleGetPlayerSessions(w http.ResponseWriter, req *http.Request) {
+	playerID, err := parseID(req, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid player id")
+		return
+	}
+
+	limit := parseLimit(req, 20, 100)
+	beforeID := parseBeforeID(req)
+
+	sessions, err := r.store.GetPlayerSessions(req.Context(), playerID, limit, beforeID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, sessions)
+}

@@ -33,12 +33,24 @@ type PlayerGUID struct {
 
 // Session represents a player's time on a server (linked to a GUID)
 type Session struct {
-	ID            int64      `json:"id"`
-	PlayerGUIDID  int64      `json:"player_guid_id"`
-	ServerID      int64      `json:"server_id"`
-	JoinedAt      time.Time  `json:"joined_at"`
-	LeftAt        *time.Time `json:"left_at,omitempty"`
-	DurationSeconds int64    `json:"duration_seconds,omitempty"`
+	ID              int64      `json:"id"`
+	PlayerGUIDID    int64      `json:"player_guid_id"`
+	ServerID        int64      `json:"server_id"`
+	JoinedAt        time.Time  `json:"joined_at"`
+	LeftAt          *time.Time `json:"left_at,omitempty"`
+	DurationSeconds int64      `json:"duration_seconds,omitempty"`
+	IPAddress       string     `json:"ip_address,omitempty"`
+}
+
+// PlayerSession represents a session for display (includes server name)
+type PlayerSession struct {
+	ID              int64      `json:"id"`
+	ServerID        int64      `json:"server_id"`
+	ServerName      string     `json:"server_name"`
+	JoinedAt        time.Time  `json:"joined_at"`
+	LeftAt          *time.Time `json:"left_at,omitempty"`
+	DurationSeconds int64      `json:"duration_seconds,omitempty"`
+	IPAddress       string     `json:"ip_address,omitempty"`
 }
 
 // PlayerStats holds aggregated stats for a player (for leaderboards)

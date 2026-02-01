@@ -61,7 +61,8 @@ type InitGameData struct {
 }
 
 type ClientConnectData struct {
-	ClientID int
+	ClientID  int
+	IPAddress string // IP:port or empty for old logs
 }
 
 type ClientUserinfoData struct {
@@ -224,7 +225,7 @@ var (
 	warmupEndRegex        = regexp.MustCompile(`^WarmupEnd:$`)
 	warmupRegex           = regexp.MustCompile(`^Warmup: (\d+)$`)
 	matchStateRegex       = regexp.MustCompile(`^MatchState: (\w+)(?: (\d+))?$`)
-	clientConnectRegex    = regexp.MustCompile(`^ClientConnect: (\d+)$`)
+	clientConnectRegex    = regexp.MustCompile(`^ClientConnect: (\d+)(?: (\S+))?$`)
 	clientUserinfoRegex   = regexp.MustCompile(`^ClientUserinfoChanged: (\d+) (.+)$`)
 	clientBeginRegex      = regexp.MustCompile(`^ClientBegin: (\d+)$`)
 	clientDisconnectRegex = regexp.MustCompile(`^ClientDisconnect: (\d+)(?: (.+))?$`)
@@ -502,8 +503,12 @@ func ParseLine(line string) (*LogEvent, error) {
 
 	if match := clientConnectRegex.FindStringSubmatch(content); match != nil {
 		clientID, _ := strconv.Atoi(match[1])
+		ipAddress := ""
+		if len(match) > 2 {
+			ipAddress = match[2]
+		}
 		event.Type = EventTypeClientConnect
-		event.Data = ClientConnectData{ClientID: clientID}
+		event.Data = ClientConnectData{ClientID: clientID, IPAddress: ipAddress}
 		return event, nil
 	}
 

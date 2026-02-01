@@ -2698,6 +2698,81 @@ h2 {
   cursor: not-allowed;
 }
 
+/* Player sessions section */
+.player-sessions-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #333;
+}
+
+.player-sessions-section h4 {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.sessions-table th,
+.sessions-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sessions-table th {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.sessions-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sessions-table .ip-address {
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-dim);
+}
+
+.sessions-loading,
+.sessions-error,
+.sessions-empty {
+  padding: 15px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.sessions-error {
+  color: var(--red);
+}
+
+.player-sessions-section .load-more-btn {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--text-dim);
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.player-sessions-section .load-more-btn:hover:not(:disabled) {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.player-sessions-section .load-more-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Admin controls section */
 .admin-controls {
   margin-top: 20px;

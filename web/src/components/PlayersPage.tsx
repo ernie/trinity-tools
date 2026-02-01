@@ -6,6 +6,7 @@ import { PageNav } from './PageNav'
 import { ColoredText } from './ColoredText'
 import { PlayerPortrait } from './PlayerPortrait'
 import { PlayerRecentMatches } from './PlayerRecentMatches'
+import { PlayerSessions } from './PlayerSessions'
 import { VerifiedBadge } from './VerifiedBadge'
 import { LoginForm } from './LoginForm'
 import { UserManagement } from './UserManagement'
@@ -309,6 +310,11 @@ export function PlayersPage() {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Admin: Sessions section */}
+              {auth.isAdmin && auth.token && (
+                <PlayerSessions playerId={stats.player.id} token={auth.token} />
               )}
 
               {/* Admin: Merge controls */}

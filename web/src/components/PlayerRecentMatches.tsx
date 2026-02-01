@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { MatchSummary } from '../types'
 import { MatchCard } from './MatchCard'
 
-const PAGE_SIZE = 6
+const PAGE_SIZE = 8
 
 interface PlayerRecentMatchesProps {
   playerId: number

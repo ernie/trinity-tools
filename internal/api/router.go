@@ -82,6 +82,7 @@ func NewRouter(store *storage.Store, manager *collector.ServerManager, authServi
 
 	// Player management routes (admin only)
 	r.mux.HandleFunc("GET /api/players/{id}/guids", r.handleGetPlayerGUIDs)
+	r.mux.HandleFunc("GET /api/players/{id}/sessions", r.requireAdmin(r.handleGetPlayerSessions))
 	r.mux.HandleFunc("POST /api/admin/players/{id}/merge", r.requireAdmin(r.handleMergePlayers))
 	r.mux.HandleFunc("POST /api/admin/guids/{id}/split", r.requireAdmin(r.handleSplitGUID))
 

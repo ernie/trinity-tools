@@ -63,6 +63,7 @@ type clientState struct {
 	skill              float64 // bot skill level (1-5), 0 if human
 	team               int
 	joinedAt           time.Time
+	ipAddress          string          // client IP address from ClientConnect
 	frags              int             // frags accumulated this session (flushed on leave/match end)
 	deaths             int             // deaths accumulated this session (flushed on leave/match end)
 	impressives        int             // impressive awards this match
@@ -442,8 +443,9 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 	case EventTypeClientConnect:
 		data := event.Data.(ClientConnectData)
 		state.clients[data.ClientID] = &clientState{
-			clientID: data.ClientID,
-			joinedAt: event.Timestamp,
+			clientID:  data.ClientID,
+			joinedAt:  event.Timestamp,
+			ipAddress: data.IPAddress,
 		}
 
 	case EventTypeClientUserinfo:
@@ -540,6 +542,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 								PlayerGUIDID: client.playerGUID,
 								ServerID:     serverID,
 								JoinedAt:     event.Timestamp,
+								IPAddress:    client.ipAddress,
 							}
 							if err := m.store.CreateSession(ctx, session); err != nil {
 								log.Printf("Error creating session: %v", err)

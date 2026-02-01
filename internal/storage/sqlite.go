@@ -618,9 +618,9 @@ func (s *Store) SplitGUID(ctx context.Context, playerGUIDID int64) (*domain.Play
 // CreateSession starts a new player session
 func (s *Store) CreateSession(ctx context.Context, sess *domain.Session) error {
 	result, err := s.db.ExecContext(ctx, `
-		INSERT INTO sessions (player_guid_id, server_id, joined_at)
-		VALUES (?, ?, ?)
-	`, sess.PlayerGUIDID, sess.ServerID, formatTimestamp(sess.JoinedAt))
+		INSERT INTO sessions (player_guid_id, server_id, joined_at, ip_address)
+		VALUES (?, ?, ?, ?)
+	`, sess.PlayerGUIDID, sess.ServerID, formatTimestamp(sess.JoinedAt), sess.IPAddress)
 	if err != nil {
 		return err
 	}
@@ -1821,4 +1821,56 @@ func (s *Store) GetFilteredMatchSummaries(ctx context.Context, filter MatchFilte
 	}
 
 	return s.attachPlayersToMatches(ctx, matches, matchIDs)
+}
+
+// GetPlayerSessions returns recent sessions for a player (across all their GUIDs)
+func (s *Store) GetPlayerSessions(ctx context.Context, playerID int64, limit int, beforeID *int64) ([]domain.PlayerSession, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	query := `
+		SELECT s.id, s.server_id, srv.name, s.joined_at, s.left_at, s.duration_seconds, s.ip_address
+		FROM sessions s
+		JOIN player_guids pg ON s.player_guid_id = pg.id
+		JOIN servers srv ON s.server_id = srv.id
+		WHERE pg.player_id = ?`
+
+	args := []interface{}{playerID}
+
+	if beforeID != nil {
+		query += ` AND s.id < ?`
+		args = append(args, *beforeID)
+	}
+
+	query += ` ORDER BY s.joined_at DESC LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []domain.PlayerSession
+	for rows.Next() {
+		var ps domain.PlayerSession
+		var leftAt sql.NullTime
+		var durationSeconds sql.NullInt64
+		var ipAddress sql.NullString
+		if err := rows.Scan(&ps.ID, &ps.ServerID, &ps.ServerName, &ps.JoinedAt, &leftAt, &durationSeconds, &ipAddress); err != nil {
+			return nil, err
+		}
+		if leftAt.Valid {
+			ps.LeftAt = &leftAt.Time
+		}
+		if durationSeconds.Valid {
+			ps.DurationSeconds = durationSeconds.Int64
+		}
+		if ipAddress.Valid {
+			ps.IPAddress = ipAddress.String
+		}
+		sessions = append(sessions, ps)
+	}
+	return sessions, rows.Err()
 }

@@ -326,6 +326,16 @@ export interface PlayerGUID {
   last_seen: string
 }
 
+export interface PlayerSession {
+  id: number
+  server_id: number
+  server_name: string
+  joined_at: string
+  left_at?: string
+  duration_seconds?: number
+  ip_address?: string
+}
+
 export interface PlayerName {
   name: string
   clean_name: string

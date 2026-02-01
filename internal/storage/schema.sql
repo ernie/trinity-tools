@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     server_id INTEGER NOT NULL REFERENCES servers(id),
     joined_at TIMESTAMP NOT NULL,
     left_at TIMESTAMP,
-    duration_seconds INTEGER
+    duration_seconds INTEGER,
+    ip_address TEXT DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_player_guid_id ON sessions(player_guid_id);
