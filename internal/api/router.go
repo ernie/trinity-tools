@@ -9,6 +9,7 @@ import (
 
 	"github.com/ernie/trinity-tools/internal/auth"
 	"github.com/ernie/trinity-tools/internal/collector"
+	"github.com/ernie/trinity-tools/internal/domain"
 	"github.com/ernie/trinity-tools/internal/storage"
 )
 
@@ -184,8 +185,26 @@ func getContentType(path string) string {
 		return "image/png"
 	case ".ico":
 		return "image/x-icon"
+	case ".tvd":
+		return "application/octet-stream"
 	default:
 		return ""
+	}
+}
+
+// populateDemoURLs checks for demo files on disk and sets DemoURL for matches that have one
+func (r *Router) populateDemoURLs(matches []domain.MatchSummary) {
+	if r.staticDir == "" {
+		return
+	}
+	for i := range matches {
+		if matches[i].UUID == "" {
+			continue
+		}
+		demoPath := filepath.Join(r.staticDir, "demos", matches[i].UUID+".tvd")
+		if _, err := os.Stat(demoPath); err == nil {
+			matches[i].DemoURL = "/demos/" + matches[i].UUID + ".tvd"
+		}
 	}
 }
 

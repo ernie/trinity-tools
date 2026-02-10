@@ -99,6 +99,21 @@ export function MatchCard({ match, onPlayerClick, highlightPlayerId, showPermali
               <span className="match-duration">{formatDuration(match.started_at, match.ended_at)}</span>
             </div>
           )}
+          {match.demo_url && (
+            <a
+              href={match.demo_url}
+              className="demo-download-btn"
+              title="Download demo"
+              download
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="5" width="20" height="15" rx="3" ry="3" />
+                <polyline points="12,9 12,16" />
+                <polyline points="8,13 12,17 16,13" />
+              </svg>
+            </a>
+          )}
           {showPermalink && (
             <Link
               to={`/matches/${match.id}`}

@@ -66,6 +66,8 @@ type MatchPlayerSummary struct {
 // MatchSummary represents a match with server and player info
 type MatchSummary struct {
 	ID         int64                `json:"id"`
+	UUID       string               `json:"-"`
+	DemoURL    string               `json:"demo_url,omitempty"`
 	ServerID   int64                `json:"server_id"`
 	ServerName string               `json:"server_name"`
 	MapName    string               `json:"map_name"`

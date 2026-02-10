@@ -1561,7 +1561,7 @@ func (s *Store) GetRecentMatchSummaries(ctx context.Context, limit int) ([]domai
 	// Get finished matches that have at least one player
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT DISTINCT
-			m.id, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
+			m.id, m.uuid, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
 			m.red_score, m.blue_score
 		FROM matches m
 		JOIN servers s ON m.server_id = s.id
@@ -1596,7 +1596,7 @@ func (s *Store) GetRecentMatchSummaries(ctx context.Context, limit int) ([]domai
 func (s *Store) GetPlayerRecentMatches(ctx context.Context, playerID int64, limit int, beforeID *int64) ([]domain.MatchSummary, error) {
 	query := `
 		SELECT DISTINCT
-			m.id, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
+			m.id, m.uuid, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
 			m.red_score, m.blue_score
 		FROM matches m
 		JOIN servers s ON m.server_id = s.id
@@ -1749,7 +1749,7 @@ func (s *Store) InvalidateUserLinkCodes(ctx context.Context, userID int64) error
 // GetMatchSummaryByID returns a single match by ID with all player stats
 func (s *Store) GetMatchSummaryByID(ctx context.Context, matchID int64) (*domain.MatchSummary, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT m.id, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
+		SELECT m.id, m.uuid, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
 		       m.red_score, m.blue_score
 		FROM matches m
 		JOIN servers s ON m.server_id = s.id
@@ -1807,7 +1807,7 @@ func (s *Store) GetFilteredMatchSummaries(ctx context.Context, filter MatchFilte
 
 	query := `
 		SELECT DISTINCT
-			m.id, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
+			m.id, m.uuid, m.server_id, s.name, m.map_name, m.game_type, m.started_at, m.ended_at, m.exit_reason,
 			m.red_score, m.blue_score
 		FROM matches m
 		JOIN servers s ON m.server_id = s.id

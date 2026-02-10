@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ernie/trinity-tools/internal/domain"
 	"github.com/ernie/trinity-tools/internal/storage"
 )
 
@@ -220,6 +221,7 @@ func (r *Router) handleGetMatches(w http.ResponseWriter, req *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	r.populateDemoURLs(matches)
 	writeJSON(w, http.StatusOK, matches)
 }
 
@@ -240,7 +242,9 @@ func (r *Router) handleGetMatch(w http.ResponseWriter, req *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, match)
+	matches := []domain.MatchSummary{*match}
+	r.populateDemoURLs(matches)
+	writeJSON(w, http.StatusOK, matches[0])
 }
 
 // handleGetLeaderboard returns top players by specified category and time period
@@ -377,6 +381,7 @@ func (r *Router) handleGetPlayerMatches(w http.ResponseWriter, req *http.Request
 		return
 	}
 
+	r.populateDemoURLs(matches)
 	writeJSON(w, http.StatusOK, matches)
 }
 

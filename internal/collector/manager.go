@@ -33,13 +33,15 @@ type serverState struct {
 	server           domain.Server
 	status           *domain.ServerStatus
 	match            *domain.Match
-	clients          map[int]*clientState // client ID -> client state
-	lastInitGame     time.Time            // dedupe InitGame and skip fake ShutdownGame at same timestamp
-	matchState       string               // "waiting", "warmup", "active", "intermission"
-	warmupDuration   int                  // warmup duration in seconds (set when warmup starts)
-	pendingExit      *string              // exit reason from Exit event (deferred until scores captured)
-	pendingExitAt    time.Time            // timestamp of Exit event
-	pendingRedScore  *int                 // team scores captured at Exit time (before server resets)
+	clients          map[int]*clientState      // client ID -> client state
+	previousClients  map[int64]*clientState     // playerGUID -> accumulated stats from previous stints
+	lastInitGame     time.Time                  // dedupe InitGame and skip fake ShutdownGame at same timestamp
+	matchState       string                     // "waiting", "warmup", "active", "intermission"
+	matchFlushed     bool                       // true once match stats have been flushed
+	warmupDuration   int                        // warmup duration in seconds (set when warmup starts)
+	pendingExit      *string                    // exit reason from Exit event (deferred until scores captured)
+	pendingExitAt    time.Time                  // timestamp of Exit event
+	pendingRedScore  *int                       // team scores captured at Exit time (before server resets)
 	pendingBlueScore *int
 }
 
@@ -413,7 +415,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 	switch event.Type {
 	case EventTypeInitGame:
 		data := event.Data.(InitGameData)
-		m.handleMapChange(ctx, state, data.MapName, data.GameType, data.UUID, event.Timestamp, replayMode)
+		m.handleMatchChange(ctx, state, data.MapName, data.GameType, data.UUID, event.Timestamp, replayMode)
 
 	case EventTypeWarmupEnd:
 		// Persist match to DB now that real gameplay is starting
@@ -440,6 +442,17 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 		state.matchState = data.State
 		if data.State == "warmup" && data.Duration > 0 {
 			state.warmupDuration = data.Duration
+		}
+
+		// Intermission = match is over. Flush all stats and end match.
+		if data.State == "intermission" && state.pendingExit != nil &&
+			state.match != nil && !state.matchFlushed && state.match.EndedAt == nil {
+			if matchID := m.getMatchID(ctx, state); matchID > 0 {
+				m.flushAllMatchStats(ctx, state, matchID, true)
+				m.store.EndMatch(ctx, matchID, state.pendingExitAt, *state.pendingExit,
+					state.pendingRedScore, state.pendingBlueScore)
+				state.matchFlushed = true
+			}
 		}
 
 	case EventTypeClientConnect:
@@ -597,27 +610,10 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 				}
 			}
 
-			// Flush match player stats
-			// If pendingExit is set, the match is over (intermission) so player completed it
-			// Players who leave mid-match don't get victory credit
-			// Skip pure spectators (team 3 with no kills/deaths)
-			if client.playerGUID > 0 && (client.team != 3 || client.frags > 0 || client.deaths > 0) {
-				if matchID := m.getMatchID(ctx, state); matchID > 0 {
-					completed := state.pendingExit != nil
-					var team *int
-					if client.team > 0 {
-						team = &client.team
-					}
-					// Determine if player joined late (after warmup ended)
-					joinedLate := state.matchState == "active" && client.joinedAt.After(state.match.StartedAt)
-					if err := m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, data.ClientID,
-						client.frags, client.deaths, completed, client.score, team, client.model, client.skill, false,
-						client.captures, client.flagReturns, client.assists, client.impressives,
-						client.excellents, client.humiliations, client.defends,
-						client.isBot, joinedLate, client.joinedAt, client.isVR); err != nil {
-						log.Printf("Error flushing match player stats: %v", err)
-					}
-				}
+			// Preserve stats for match-end flush (unless match already flushed)
+			if !state.matchFlushed && client.playerGUID > 0 &&
+				(client.team != 3 || client.frags > 0 || client.deaths > 0) {
+				state.savePreviousClient(client)
 			}
 
 			// Emit player leave event (skip in replay mode)
@@ -730,7 +726,9 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 
 		// End current match if any
 		if state.match != nil {
-			if replayMode {
+			if state.matchFlushed {
+				// Already flushed at intermission — just end match bookkeeping
+			} else if replayMode {
 				// Replay mode: only flush/end if there was a proper Exit event (pendingExit set)
 				// If pendingExit is nil, this might be a mid-match server restart, and the match
 				// could still be ongoing. EndAllOpenMatches will clean up truly orphaned matches.
@@ -739,71 +737,24 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 					if err != nil {
 						log.Printf("Error looking up match by UUID during replay: %v", err)
 					} else if existing != nil && existing.EndedAt == nil {
-						// Match exists and is open - flush stats and end it
-						maxFFAScore := computeMaxScore(state.clients)
-						for clientID, client := range state.clients {
-							if client.playerGUID > 0 && (client.team != 3 || client.frags > 0 || client.deaths > 0) {
-								var team *int
-								if client.team > 0 {
-									team = &client.team
-								}
-								victory := isMatchWinner(client, state, maxFFAScore)
-								joinedLate := client.joinedAt.After(existing.StartedAt)
-								m.store.FlushMatchPlayerStats(ctx, existing.ID, client.playerGUID, clientID,
-									client.frags, client.deaths, true, client.score, team, client.model, client.skill, victory,
-									client.captures, client.flagReturns, client.assists, client.impressives,
-									client.excellents, client.humiliations, client.defends,
-									client.isBot, joinedLate, client.joinedAt, client.isVR)
-							}
-						}
+						m.flushAllMatchStats(ctx, state, existing.ID, true)
 						m.store.EndMatch(ctx, existing.ID, state.pendingExitAt, *state.pendingExit, state.pendingRedScore, state.pendingBlueScore)
 					}
 				}
 			} else {
-				// Live mode: flush individual player stats and end match
+				// Live mode: flush all player stats and end match
 				matchID := m.getMatchID(ctx, state)
 
 				if matchID > 0 {
 					if state.pendingExit != nil {
 						// Normal match end: Exit event was received, scores have been captured
-						maxFFAScore := computeMaxScore(state.clients)
-						for clientID, client := range state.clients {
-							if client.playerGUID > 0 {
-								var team *int
-								if client.team > 0 {
-									team = &client.team
-								}
-								victory := isMatchWinner(client, state, maxFFAScore)
-								joinedLate := state.match != nil && client.joinedAt.After(state.match.StartedAt)
-								if err := m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, clientID,
-									client.frags, client.deaths, true, client.score, team, client.model, client.skill, victory,
-									client.captures, client.flagReturns, client.assists, client.impressives,
-									client.excellents, client.humiliations, client.defends,
-									client.isBot, joinedLate, client.joinedAt, client.isVR); err != nil {
-									log.Printf("Error flushing match player stats: %v", err)
-								}
-							}
-						}
-
+						m.flushAllMatchStats(ctx, state, matchID, true)
 						if err := m.store.EndMatch(ctx, matchID, state.pendingExitAt, *state.pendingExit, state.pendingRedScore, state.pendingBlueScore); err != nil {
 							log.Printf("Error ending match: %v", err)
 						}
 					} else {
 						// Abnormal shutdown: no Exit event, so no scores or victories
-						for clientID, client := range state.clients {
-							if client.playerGUID > 0 {
-								var team *int
-								if client.team > 0 {
-									team = &client.team
-								}
-								joinedLate := state.match != nil && client.joinedAt.After(state.match.StartedAt)
-								m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, clientID,
-									client.frags, client.deaths, false, nil, team, client.model, client.skill, false,
-									client.captures, client.flagReturns, client.assists, client.impressives,
-									client.excellents, client.humiliations, client.defends,
-									client.isBot, joinedLate, client.joinedAt, client.isVR)
-							}
-						}
+						m.flushAllMatchStats(ctx, state, matchID, false)
 						m.store.EndMatch(ctx, matchID, event.Timestamp, "shutdown", nil, nil)
 					}
 				} else if state.match != nil && state.match.ID == 0 {
@@ -813,11 +764,13 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 			}
 		}
 		state.match = nil
+		state.matchFlushed = false
 		state.pendingExit = nil
 		state.pendingRedScore = nil
 		state.pendingBlueScore = nil
 		// Clear all client state (including kills/deaths/score counters)
 		state.clients = make(map[int]*clientState)
+		state.previousClients = make(map[int64]*clientState)
 
 	case EventTypeFlagCapture:
 		data := event.Data.(FlagCaptureData)
@@ -961,43 +914,39 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 		data := event.Data.(TeamChangeData)
 		if client, ok := state.clients[data.ClientID]; ok {
 			oldTeam := client.team
-			client.team = data.NewTeam
 
-			// Flush stats when leaving a playing team (to spectator OR to different team)
-			// The game resets score on any team switch, so we need to flush accumulated stats
-			// Skip if coming from spectator (no stats to flush) or if team didn't actually change
+			// When leaving a playing team, preserve stats for match-end flush
 			if oldTeam != 3 && oldTeam != data.NewTeam && client.playerGUID > 0 {
-				if matchID := m.getMatchID(ctx, state); matchID > 0 {
-					var team *int
-					if oldTeam > 0 {
-						team = &oldTeam
-					}
-					joinedLate := state.matchState == "active" && state.match != nil && client.joinedAt.After(state.match.StartedAt)
-					// Flush with completed=false (switched teams mid-match), no victory
-					m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, data.ClientID,
-						client.frags, client.deaths, false, client.score, team, client.model, client.skill, false,
-						client.captures, client.flagReturns, client.assists, client.impressives,
-						client.excellents, client.humiliations, client.defends,
-						client.isBot, joinedLate, client.joinedAt, client.isVR)
-					// Reset in-memory counters after flushing
-					client.frags = 0
-					client.deaths = 0
-					client.captures = 0
-					client.flagReturns = 0
-					client.assists = 0
-					client.impressives = 0
-					client.excellents = 0
-					client.humiliations = 0
-					client.defends = 0
-					client.score = nil
-				}
-			}
+				if m.getMatchID(ctx, state) > 0 {
+					state.savePreviousClient(client)
 
-			// Update joinedAt when starting a new playing stint
-			// - Switching FROM spectator to a playing team
-			// - Switching between playing teams (Red→Blue) after flush
-			if data.NewTeam != 3 && (oldTeam == 3 || oldTeam != data.NewTeam) {
-				client.joinedAt = event.Timestamp
+					// Create fresh clientState for new team, carrying forward identity
+					state.clients[data.ClientID] = &clientState{
+						clientID:   client.clientID,
+						playerGUID: client.playerGUID,
+						playerID:   client.playerID,
+						sessionID:  client.sessionID,
+						name:       client.name,
+						cleanName:  client.cleanName,
+						guid:       client.guid,
+						model:      client.model,
+						isBot:      client.isBot,
+						isVR:       client.isVR,
+						skill:      client.skill,
+						team:       data.NewTeam,
+						joinedAt:   event.Timestamp,
+						ipAddress:  client.ipAddress,
+					}
+				} else {
+					// No active match — just update team
+					client.team = data.NewTeam
+				}
+			} else {
+				client.team = data.NewTeam
+				// Update joinedAt when entering a playing team from spectator
+				if data.NewTeam != 3 && oldTeam == 3 {
+					client.joinedAt = event.Timestamp
+				}
 			}
 		}
 
@@ -1190,7 +1139,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 }
 
 // handleMapChange handles a new map starting
-func (m *ServerManager) handleMapChange(ctx context.Context, state *serverState, mapName string, gameType int, uuid string, ts time.Time, replayMode bool) {
+func (m *ServerManager) handleMatchChange(ctx context.Context, state *serverState, mapName string, gameType int, uuid string, ts time.Time, replayMode bool) {
 	// Skip duplicate InitGame at same timestamp (Q3 sometimes logs it twice on server restart)
 	if ts.Equal(state.lastInitGame) {
 		return
@@ -1217,9 +1166,18 @@ func (m *ServerManager) handleMapChange(ctx context.Context, state *serverState,
 		// If no match found in DB, leave state.match = nil
 		// Stats will be reconstructed at ShutdownGame when match is created
 		state.clients = make(map[int]*clientState)
+		state.previousClients = make(map[int64]*clientState)
+		state.matchFlushed = false
 		state.matchState = ""
 		state.warmupDuration = 0
 		return
+	}
+
+	// Fallback flush: if previous match was never flushed (no ShutdownGame seen), flush now
+	if !state.matchFlushed && state.match != nil && state.match.EndedAt == nil {
+		if matchID := m.getMatchID(ctx, state); matchID > 0 {
+			m.flushAllMatchStats(ctx, state, matchID, false)
+		}
 	}
 
 	// Check if a match with this UUID already exists in the database
@@ -1249,6 +1207,8 @@ func (m *ServerManager) handleMapChange(ctx context.Context, state *serverState,
 
 		// Clear client state for state rebuild
 		state.clients = make(map[int]*clientState)
+		state.previousClients = make(map[int64]*clientState)
+		state.matchFlushed = false
 		state.matchState = ""
 		state.warmupDuration = 0
 		return
@@ -1273,6 +1233,8 @@ func (m *ServerManager) handleMapChange(ctx context.Context, state *serverState,
 
 	// Clear client state and reset match state for new map
 	state.clients = make(map[int]*clientState)
+	state.previousClients = make(map[int64]*clientState)
+	state.matchFlushed = false
 	state.matchState = "" // will be set by MatchState event if warmup enabled
 	state.warmupDuration = 0
 
@@ -1286,6 +1248,77 @@ func (m *ServerManager) handleMapChange(ctx context.Context, state *serverState,
 			GameType: gameTypeStr,
 		},
 	})
+}
+
+// savePreviousClient accumulates stats from a completed stint into previousClients.
+// One entry per playerGUID — counters are added, metadata is updated to latest.
+func (state *serverState) savePreviousClient(client *clientState) {
+	if state.previousClients == nil {
+		state.previousClients = make(map[int64]*clientState)
+	}
+	if prev, ok := state.previousClients[client.playerGUID]; ok {
+		prev.frags += client.frags
+		prev.deaths += client.deaths
+		prev.captures += client.captures
+		prev.flagReturns += client.flagReturns
+		prev.assists += client.assists
+		prev.impressives += client.impressives
+		prev.excellents += client.excellents
+		prev.humiliations += client.humiliations
+		prev.defends += client.defends
+		// Update to latest metadata
+		prev.clientID = client.clientID
+		prev.team = client.team
+		prev.model = client.model
+	} else {
+		state.previousClients[client.playerGUID] = client
+	}
+}
+
+// flushAllMatchStats flushes stats for all players (previous stints + connected) at match end
+func (m *ServerManager) flushAllMatchStats(ctx context.Context, state *serverState, matchID int64, computeVictory bool) {
+	var maxFFAScore int
+	if computeVictory {
+		maxFFAScore = computeMaxScore(state.clients)
+	}
+
+	// Flush previous stints FIRST (completed=false, left or changed teams before match end)
+	// Must go first so connected clients' metadata (model, team, client_id) is the final write
+	for _, client := range state.previousClients {
+		if client.playerGUID > 0 && (client.team != 3 || client.frags > 0 || client.deaths > 0) {
+			var team *int
+			if client.team > 0 {
+				team = &client.team
+			}
+			joinedLate := state.match != nil && client.joinedAt.After(state.match.StartedAt)
+			m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, client.clientID,
+				client.frags, client.deaths, false, client.score, team, client.model, client.skill, false,
+				client.captures, client.flagReturns, client.assists, client.impressives,
+				client.excellents, client.humiliations, client.defends,
+				client.isBot, joinedLate, client.joinedAt, client.isVR)
+		}
+	}
+
+	// Flush connected players (completed=true, present at match end)
+	// Goes last so their metadata is authoritative in the DB row
+	for clientID, client := range state.clients {
+		if client.playerGUID > 0 {
+			var team *int
+			if client.team > 0 {
+				team = &client.team
+			}
+			var victory bool
+			if computeVictory {
+				victory = isMatchWinner(client, state, maxFFAScore)
+			}
+			joinedLate := state.match != nil && client.joinedAt.After(state.match.StartedAt)
+			m.store.FlushMatchPlayerStats(ctx, matchID, client.playerGUID, clientID,
+				client.frags, client.deaths, true, client.score, team, client.model, client.skill, victory,
+				client.captures, client.flagReturns, client.assists, client.impressives,
+				client.excellents, client.humiliations, client.defends,
+				client.isBot, joinedLate, client.joinedAt, client.isVR)
+		}
+	}
 }
 
 // getMatchID returns the current match ID, looking up from DB if state.match.ID is 0 (placeholder from replay)

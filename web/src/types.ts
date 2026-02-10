@@ -255,6 +255,7 @@ export interface MatchSummary {
   players: MatchPlayerSummary[]
   red_score?: number
   blue_score?: number
+  demo_url?: string
 }
 
 // Auth types

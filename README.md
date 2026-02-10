@@ -1,6 +1,6 @@
 # Trinity
 
-Real-time statistics tracking system for the [Trinity Quake 3 server](https://github.com/ernie/Quake3e) and [Trinity mod](https://github.com/ernie/trinity).
+Real-time statistics tracking system for the [Trinity Quake 3 engine](https://github.com/ernie/trinity-engine) and [Trinity mod](https://github.com/ernie/trinity).
 
 ## Installation
 
