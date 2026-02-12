@@ -36,7 +36,7 @@ type serverState struct {
 	clients          map[int]*clientState      // client ID -> client state
 	previousClients  map[int64]*clientState     // playerGUID -> accumulated stats from previous stints
 	lastInitGame     time.Time                  // dedupe InitGame and skip fake ShutdownGame at same timestamp
-	matchState       string                     // "waiting", "warmup", "active", "intermission"
+	matchState       string                     // "waiting", "warmup", "active", "overtime", "intermission"
 	matchFlushed     bool                       // true once match stats have been flushed
 	warmupDuration   int                        // warmup duration in seconds (set when warmup starts)
 	pendingExit      *string                    // exit reason from Exit event (deferred until scores captured)
@@ -612,6 +612,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 
 			// Preserve stats for match-end flush (unless match already flushed)
 			if !state.matchFlushed && client.playerGUID > 0 &&
+				(state.matchState == "active" || state.matchState == "overtime") &&
 				(client.team != 3 || client.frags > 0 || client.deaths > 0) {
 				state.savePreviousClient(client)
 			}
@@ -635,9 +636,9 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 	case EventTypeFrag:
 		data := event.Data.(FragEventData)
 
-		// Only track frags/deaths during active match (not warmup/waiting/intermission)
+		// Only track frags/deaths during active gameplay (not warmup/waiting/intermission)
 		// Note: We track stats even during replay so we can flush them if match wasn't completed
-		if state.matchState == "active" {
+		if state.matchState == "active" || state.matchState == "overtime" {
 			// Increment in-memory frag count for fragger (human or bot)
 			if fragger, ok := state.clients[data.FraggerID]; ok {
 				fragger.frags++
@@ -745,7 +746,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 				// Live mode: flush all player stats and end match
 				matchID := m.getMatchID(ctx, state)
 
-				if matchID > 0 {
+				if matchID > 0 && state.match.EndedAt == nil {
 					if state.pendingExit != nil {
 						// Normal match end: Exit event was received, scores have been captured
 						m.flushAllMatchStats(ctx, state, matchID, true)
@@ -917,7 +918,8 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 
 			// When leaving a playing team, preserve stats for match-end flush
 			if oldTeam != 3 && oldTeam != data.NewTeam && client.playerGUID > 0 {
-				if m.getMatchID(ctx, state) > 0 {
+				if m.getMatchID(ctx, state) > 0 &&
+					(state.matchState == "active" || state.matchState == "overtime") {
 					state.savePreviousClient(client)
 
 					// Create fresh clientState for new team, carrying forward identity
@@ -977,8 +979,8 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 		}
 
 	case EventTypeAward:
-		// Only track awards during active match (not warmup/waiting/intermission)
-		if state.matchState != "active" {
+		// Only track awards during active gameplay (not warmup/waiting/intermission)
+		if state.matchState != "active" && state.matchState != "overtime" {
 			break
 		}
 		data := event.Data.(AwardData)

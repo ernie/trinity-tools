@@ -120,7 +120,7 @@ type WarmupData struct {
 }
 
 type MatchStateData struct {
-	State    string // "waiting", "warmup", "active", "intermission"
+	State    string // "waiting", "warmup", "active", "overtime", "intermission"
 	Duration int    // warmup duration in seconds (only for warmup state)
 }
 

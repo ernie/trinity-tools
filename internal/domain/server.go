@@ -30,7 +30,7 @@ type ServerStatus struct {
 	ServerVars      map[string]string `json:"server_vars,omitempty"`
 	TeamScores      *TeamScores       `json:"team_scores,omitempty"`
 	FlagStatus      *FlagStatus       `json:"flag_status,omitempty"`
-	MatchState      string            `json:"match_state,omitempty"`       // "waiting", "warmup", "active", "intermission"
+	MatchState      string            `json:"match_state,omitempty"`       // "waiting", "warmup", "active", "overtime", "intermission"
 	WarmupRemaining int               `json:"warmup_remaining,omitempty"` // milliseconds remaining in warmup
 }
 

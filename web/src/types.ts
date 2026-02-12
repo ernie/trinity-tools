@@ -47,7 +47,7 @@ export interface ServerStatus {
   team_scores?: TeamScores
   flag_status?: FlagStatus
   server_vars?: Record<string, string>
-  match_state?: 'waiting' | 'warmup' | 'active' | 'intermission'
+  match_state?: 'waiting' | 'warmup' | 'active' | 'overtime' | 'intermission'
   warmup_remaining?: number // milliseconds remaining in warmup
 }
 

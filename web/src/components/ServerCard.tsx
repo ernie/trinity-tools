@@ -59,19 +59,6 @@ function getTimeLimit(serverVars?: Record<string, string>): number | null {
   return limit > 0 ? limit : null
 }
 
-// Check if match is in overtime (time exceeded but still active)
-function getOvertimeInfo(gameTimeMs: number, timeLimitMinutes: number | null, matchState?: string) {
-  if (!timeLimitMinutes || timeLimitMinutes <= 0 || matchState !== 'active') {
-    return { isOvertime: false, overtimeMs: 0 }
-  }
-  const timeLimitMs = timeLimitMinutes * 60 * 1000
-  const isOvertime = gameTimeMs > timeLimitMs
-  return {
-    isOvertime,
-    overtimeMs: isOvertime ? gameTimeMs - timeLimitMs : 0
-  }
-}
-
 // Format game time from milliseconds to M:SS (supports negative for warmup)
 function formatGameTime(ms: number, isWarmup: boolean = false): string {
   const absMs = Math.abs(ms)
@@ -83,24 +70,25 @@ function formatGameTime(ms: number, isWarmup: boolean = false): string {
 }
 
 // Get effective game time, using warmup_remaining for negative countdown
-function getDisplayTime(server: ServerStatus, timeLimitMinutes: number | null): { time: string; isWarmup: boolean; isOvertime: boolean; overtimeMs: number } {
+function getDisplayTime(server: ServerStatus, timeLimitMinutes: number | null): { time: string; isWarmup: boolean; isOvertime: boolean } {
   const isWarmup = server.match_state === 'warmup' && server.warmup_remaining && server.warmup_remaining > 0
   if (isWarmup) {
-    return { time: formatGameTime(server.warmup_remaining!, true), isWarmup: true, isOvertime: false, overtimeMs: 0 }
+    return { time: formatGameTime(server.warmup_remaining!, true), isWarmup: true, isOvertime: false }
   }
-  const overtime = getOvertimeInfo(server.game_time_ms, timeLimitMinutes, server.match_state)
-  if (overtime.isOvertime) {
-    return { time: `+${formatGameTime(overtime.overtimeMs)}`, isWarmup: false, isOvertime: true, overtimeMs: overtime.overtimeMs }
+  const isOvertime = server.match_state === 'overtime'
+  if (isOvertime && timeLimitMinutes) {
+    const timeLimitMs = timeLimitMinutes * 60 * 1000
+    const overtimeMs = server.game_time_ms - timeLimitMs
+    return { time: `+${formatGameTime(Math.max(0, overtimeMs))}`, isWarmup: false, isOvertime: true }
   }
-  return { time: formatGameTime(server.game_time_ms), isWarmup: false, isOvertime: false, overtimeMs: 0 }
+  return { time: formatGameTime(server.game_time_ms), isWarmup: false, isOvertime: false }
 }
 
 // Get match state badge class and label
-function getMatchStateBadge(state?: string, isOvertime: boolean = false): { className: string; label: string } | null {
-  if (isOvertime) {
-    return { className: 'match-state-overtime', label: 'Overtime' }
-  }
+function getMatchStateBadge(state?: string): { className: string; label: string } | null {
   switch (state) {
+    case 'overtime':
+      return { className: 'match-state-overtime', label: 'Overtime' }
     case 'warmup':
       return { className: 'match-state-warmup', label: 'Warmup' }
     case 'waiting':
@@ -108,9 +96,8 @@ function getMatchStateBadge(state?: string, isOvertime: boolean = false): { clas
     case 'intermission':
       return { className: 'match-state-intermission', label: 'Intermission' }
     case 'active':
-      return null // Don't show badge for active - it's the normal state
     default:
-      return null
+      return null // Don't show badge for active - it's the normal state
   }
 }
 
@@ -134,8 +121,8 @@ function useInterpolatedTime(server: ServerStatus, timeLimitMinutes: number | nu
 
   // Increment/decrement timer every second based on match state
   useEffect(() => {
-    // Only tick for active or warmup states
-    if (server.match_state !== 'active' && server.match_state !== 'warmup') {
+    // Only tick for active, overtime, or warmup states
+    if (server.match_state !== 'active' && server.match_state !== 'overtime' && server.match_state !== 'warmup') {
       return
     }
 
@@ -147,7 +134,7 @@ function useInterpolatedTime(server: ServerStatus, timeLimitMinutes: number | nu
   }, [server.match_state, server.last_updated])
 
   // Calculate interpolated values
-  let gameTimeMs = server.match_state === 'active'
+  let gameTimeMs = (server.match_state === 'active' || server.match_state === 'overtime')
     ? baseGameTimeRef.current + offset
     : server.game_time_ms
 
@@ -197,17 +184,16 @@ export function ServerCard({ server, newPlayers, isSelected, onSelect, onPlayerC
   const { gameTimeMs, warmupRemaining } = useInterpolatedTime(server, timeLimit)
   const interpolatedServer = { ...server, game_time_ms: gameTimeMs, warmup_remaining: warmupRemaining }
   const displayTime = getDisplayTime(interpolatedServer, timeLimit)
-  const matchStateBadge = getMatchStateBadge(server.match_state, displayTime.isOvertime)
+  const matchStateBadge = getMatchStateBadge(server.match_state)
 
   // Determine dot color and tooltip based on server state
   const getStatusInfo = (): { className: string; tooltip: string } => {
     if (!server.online) {
       return { className: 'offline', tooltip: 'Server Offline' }
     }
-    if (displayTime.isOvertime) {
-      return { className: 'overtime', tooltip: 'Overtime' }
-    }
     switch (server.match_state) {
+      case 'overtime':
+        return { className: 'overtime', tooltip: 'Overtime' }
       case 'warmup':
         return { className: 'warmup', tooltip: 'Warmup' }
       case 'waiting':
