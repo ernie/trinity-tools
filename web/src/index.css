@@ -2384,6 +2384,19 @@ h2 {
   padding: 10px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-item-bg-icon {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  width: 96px;
+  height: 96px;
+  opacity: 0.15;
+  pointer-events: none;
+  transform: rotate(-20deg);
 }
 
 .stat-item .stat-value {

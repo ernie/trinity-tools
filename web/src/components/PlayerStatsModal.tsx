@@ -83,14 +83,14 @@ function StatsDisplay({ stats }: { stats: PlayerStatsResponse }) {
         <StatItem label="K/D" value={stats.stats.kd_ratio.toFixed(2)} />
         <StatItem label="Frags" value={stats.stats.frags} className="frags" />
         <StatItem label="Deaths" value={stats.stats.deaths} className="deaths" />
-        <StatItem label="Victories" value={stats.stats.victories} />
-        <StatItem label="Excellent" value={stats.stats.excellents} />
-        <StatItem label="Impressive" value={stats.stats.impressives} />
-        <StatItem label="Humiliation" value={stats.stats.humiliations} />
-        <StatItem label="Captures" value={stats.stats.captures} />
-        <StatItem label="Returns" value={stats.stats.flag_returns} />
-        <StatItem label="Assists" value={stats.stats.assists} />
-        <StatItem label="Defense" value={stats.stats.defends} />
+        <StatItem label="Victories" value={stats.stats.victories} backgroundIcon="/assets/medals/medal_victory.png" />
+        <StatItem label="Excellent" value={stats.stats.excellents} backgroundIcon="/assets/medals/medal_excellent.png" />
+        <StatItem label="Impressive" value={stats.stats.impressives} backgroundIcon="/assets/medals/medal_impressive.png" />
+        <StatItem label="Humiliation" value={stats.stats.humiliations} backgroundIcon="/assets/medals/medal_gauntlet.png" />
+        <StatItem label="Captures" value={stats.stats.captures} backgroundIcon="/assets/medals/medal_capture.png" />
+        <StatItem label="Returns" value={stats.stats.flag_returns} backgroundIcon="/assets/flags/flag_in_base_red.png" />
+        <StatItem label="Assists" value={stats.stats.assists} backgroundIcon="/assets/medals/medal_assist.png" />
+        <StatItem label="Defense" value={stats.stats.defends} backgroundIcon="/assets/medals/medal_defend.png" />
       </div>
 
       {stats.names && (() => {
