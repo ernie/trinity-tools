@@ -6,7 +6,7 @@ Real-time statistics tracking system for the [Trinity Quake 3 engine](https://gi
 
 ### From Prebuilt Release
 
-Download the latest release for your platform from the [Releases](https://github.com/ernie/trinity-tools/releases) page:
+Download the latest release for your platform from the [Releases](https://github.com/ernie/trinity-tracker/releases) page:
 
 | Platform           | Architecture                      | File                                |
 | ------------------ | --------------------------------- | ----------------------------------- |
@@ -16,7 +16,7 @@ Download the latest release for your platform from the [Releases](https://github
 
 ```bash
 # Download and extract (replace with your architecture and version)
-wget https://github.com/ernie/trinity-tools/releases/download/v1.0.0/trinity-v1.0.0-linux-arm64.tar.gz
+wget https://github.com/ernie/trinity-tracker/releases/download/v1.0.0/trinity-v1.0.0-linux-arm64.tar.gz
 tar -xzf trinity-v1.0.0-linux-arm64.tar.gz
 cd trinity-v1.0.0-linux-arm64
 
