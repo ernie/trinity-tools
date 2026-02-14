@@ -15,8 +15,10 @@ export function StatItem({ label, value, className, subscript, title, background
 
   return (
     <div className="stat-item" title={title}>
-      {backgroundIcon && (
+      {backgroundIcon ? (
         <img className="stat-item-bg-icon" src={backgroundIcon} alt="" />
+      ) : (
+        <span className="stat-item-bg-icon stat-item-bg-hash">#</span>
       )}
       <div className={`stat-value ${className ?? ''}`}>
         {displayValue}
