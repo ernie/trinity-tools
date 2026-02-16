@@ -22,10 +22,11 @@ type Router struct {
 	logStream *LogStreamManager
 	auth      *auth.Service
 	staticDir string
+	quake3Dir string
 }
 
 // NewRouter creates a new HTTP router
-func NewRouter(store *storage.Store, manager *collector.ServerManager, authService *auth.Service, staticDir string) *Router {
+func NewRouter(store *storage.Store, manager *collector.ServerManager, authService *auth.Service, staticDir, quake3Dir string) *Router {
 	r := &Router{
 		mux:       http.NewServeMux(),
 		store:     store,
@@ -34,6 +35,7 @@ func NewRouter(store *storage.Store, manager *collector.ServerManager, authServi
 		logStream: NewLogStreamManager(store),
 		auth:      authService,
 		staticDir: staticDir,
+		quake3Dir: quake3Dir,
 	}
 
 	// API routes
@@ -185,6 +187,8 @@ func getContentType(path string) string {
 		return "image/png"
 	case ".ico":
 		return "image/x-icon"
+	case ".wasm":
+		return "application/wasm"
 	case ".tvd":
 		return "application/octet-stream"
 	default:

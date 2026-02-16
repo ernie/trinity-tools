@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /demo/
+Disallow: /demos/
+Disallow: /q3/
+Disallow: /demopk3s/
+Disallow: /api/
+Disallow: /ws
+Disallow: /health
+Disallow: /matches/*/demo

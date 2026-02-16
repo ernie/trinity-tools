@@ -113,6 +113,19 @@ export function MatchCard({ match, onPlayerClick, highlightPlayerId, showPermali
             </div>
           )}
           {match.demo_url && (
+            <Link
+              to={`/matches/${match.id}/demo`}
+              className="demo-play-btn"
+              title="Play demo"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="3" ry="3" />
+                <polygon points="10,8.5 16,12 10,15.5" fill="currentColor" stroke="none" />
+              </svg>
+            </Link>
+          )}
+          {match.demo_url && (
             <a
               href={match.demo_url}
               className="demo-download-btn"

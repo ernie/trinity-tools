@@ -10,9 +10,14 @@ export default defineConfig({
         target: 'ws://localhost:8080',
         ws: true,
       },
+      '/demos': 'http://localhost:8080',
+      '/demopk3s': 'http://localhost:8080',
     },
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      external: ['/demo/demo-loader.js'],
+    },
   },
 })

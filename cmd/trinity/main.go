@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/ernie/trinity-tools/internal/api"
+	"github.com/ernie/trinity-tools/internal/assets"
 	"github.com/ernie/trinity-tools/internal/auth"
 	"github.com/ernie/trinity-tools/internal/collector"
 	"github.com/ernie/trinity-tools/internal/config"
@@ -65,6 +66,8 @@ func main() {
 		cmdSkills(os.Args[2:])
 	case "assets":
 		cmdAssets(os.Args[2:])
+	case "demobake":
+		cmdDemobake(os.Args[2:])
 	case "version":
 		fmt.Printf("trinity %s\n", version)
 	case "help", "-h", "--help":
@@ -96,6 +99,7 @@ func printUsage() {
 	fmt.Println("  medals [path]                      Extract medal icons from pk3 file(s)")
 	fmt.Println("  skills [path]                      Extract skill icons from pk3 file(s)")
 	fmt.Println("  assets [path]                      Extract all assets (portraits, medals, skills, levelshots)")
+	fmt.Println("  demobake [path]                    Build baseline pk3, map pk3s, and manifest for web demo playback")
 	fmt.Println("  version                            Show version")
 	fmt.Println("  help                               Show this help")
 	fmt.Println()
@@ -162,7 +166,7 @@ func cmdServe(args []string) {
 	}
 
 	// Create HTTP router
-	router := api.NewRouter(store, manager, authService, cfg.Server.StaticDir)
+	router := api.NewRouter(store, manager, authService, cfg.Server.StaticDir, cfg.Server.Quake3Dir)
 	router.StartWebSocketHub()
 	log.Printf("Serving static files from %s", cfg.Server.StaticDir)
 
@@ -1210,6 +1214,44 @@ func cmdAssets(args []string) {
 
 	fmt.Println("=== All asset extraction complete ===")
 }
+
+// cmdDemobake builds baseline pk3s, manifest, and all map pk3s
+func cmdDemobake(args []string) {
+	fs := flag.NewFlagSet("demobake", flag.ExitOnError)
+	configPath := fs.String("config", defaultConfigPath, "path to configuration file")
+	output := fs.String("output", "", "output directory (default: {static_dir}/pk3s/)")
+	fs.Parse(args)
+
+	cfg := loadCLIConfigFromFlags(*configPath, "")
+	if cfg == nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to load config\n")
+		os.Exit(1)
+	}
+
+	// Use remaining arg as quake3_dir override
+	remaining := fs.Args()
+	quake3Dir := cfg.Server.Quake3Dir
+	if len(remaining) > 0 {
+		quake3Dir = remaining[0]
+	}
+
+	outputDir := *output
+	if outputDir == "" {
+		if cfg.Server.StaticDir == "" {
+			fmt.Fprintf(os.Stderr, "Error: static_dir not configured and --output not specified\n")
+			os.Exit(1)
+		}
+		outputDir = filepath.Join(cfg.Server.StaticDir, "demopk3s")
+	}
+
+	if err := assets.BuildBaseline(quake3Dir, outputDir); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Demobake complete")
+}
+
 
 // collectPk3FilesOrdered returns pk3 files in Quake 3 load order (later files override earlier)
 // Order: pak0-9 numerically, then remaining pk3s alphabetically
