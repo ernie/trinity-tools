@@ -89,6 +89,11 @@ func NewRouter(store *storage.Store, manager *collector.ServerManager, authServi
 	r.mux.HandleFunc("POST /api/admin/players/{id}/merge", r.requireAdmin(r.handleMergePlayers))
 	r.mux.HandleFunc("POST /api/admin/guids/{id}/split", r.requireAdmin(r.handleSplitGUID))
 
+	// Quake 3 file serving (admin only, for web game client)
+	if quake3Dir != "" {
+		r.mux.HandleFunc("GET /api/q3/{path...}", r.requireAdmin(r.handleQuake3File))
+	}
+
 	// Health check
 	r.mux.HandleFunc("GET /health", r.handleHealth)
 
@@ -166,6 +171,41 @@ func (r *Router) handleStatic(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Serve the file
+	http.ServeFile(w, req, fullPath)
+}
+
+// handleQuake3File serves Quake 3 game files to authenticated admin users
+func (r *Router) handleQuake3File(w http.ResponseWriter, req *http.Request) {
+	filePath := req.PathValue("path")
+	if filePath == "" {
+		http.NotFound(w, req)
+		return
+	}
+
+	// Clean and construct full path
+	cleaned := filepath.Clean("/" + filePath)
+	fullPath := filepath.Join(r.quake3Dir, cleaned)
+
+	// Security: ensure the path is within quake3Dir
+	absQuake3Dir, _ := filepath.Abs(r.quake3Dir)
+	absPath, _ := filepath.Abs(fullPath)
+	if !strings.HasPrefix(absPath, absQuake3Dir+string(filepath.Separator)) && absPath != absQuake3Dir {
+		http.NotFound(w, req)
+		return
+	}
+
+	// Check if file exists and is not a directory
+	info, err := os.Stat(fullPath)
+	if err != nil || info.IsDir() {
+		http.NotFound(w, req)
+		return
+	}
+
+	// Set content type for pk3 files
+	if strings.HasSuffix(strings.ToLower(fullPath), ".pk3") {
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+
 	http.ServeFile(w, req, fullPath)
 }
 

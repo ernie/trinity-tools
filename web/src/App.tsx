@@ -630,12 +630,17 @@ function App() {
                 {auth.username}
               </Link>
               {auth.isAdmin && (
-                <button
-                  onClick={() => setShowUserManagement(true)}
-                  className="admin-btn"
-                >
-                  Users
-                </button>
+                <>
+                  <Link to="/play" className="admin-btn">
+                    Play
+                  </Link>
+                  <button
+                    onClick={() => setShowUserManagement(true)}
+                    className="admin-btn"
+                  >
+                    Users
+                  </button>
+                </>
               )}
               <button onClick={logout} className="logout-btn">
                 Logout

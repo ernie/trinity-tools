@@ -62,17 +62,18 @@ export function DemoPlayerPage() {
         if (aborted) return
 
         // @ts-ignore — runtime module from WASM engine, not in TS source tree
-        const { loadDemo } = await import(/* @vite-ignore */ '/demo/demo-loader.js')
+        const { loadEngine } = await import(/* @vite-ignore */ '/engine/loader.js')
         if (aborted) return
 
         const rect = canvasRef.current!.getBoundingClientRect()
         const dpr = window.devicePixelRatio || 1
-        const mod = await loadDemo({
+        const mod = await loadEngine({
           canvas: canvasRef.current!,
           statusEl: statusRef.current!,
-          enginePath: '/demo/',
+          enginePath: '/engine/',
+          configUrl: '/engine/demo-config.json',
           demoUrl: match.demo_url,
-          extraArgs: `+set r_mode -1 +set r_customwidth ${Math.round(rect.width * dpr)} +set r_customheight ${Math.round(rect.height * dpr)}`,
+          extraArgs: `+set cl_demoPlayer 1 +set r_mode -1 +set r_customwidth ${Math.round(rect.width * dpr)} +set r_customheight ${Math.round(rect.height * dpr)}`,
           onProgress: (loaded: number, total: number) => setProgress({ loaded, total }),
           onReady: () => {
             setEngineReady(true)

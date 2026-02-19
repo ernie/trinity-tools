@@ -1695,6 +1695,7 @@ h2 {
   font-family: inherit;
   font-size: 0.8rem;
   line-height: 1;
+  text-decoration: none;
 }
 
 .admin-btn:hover,

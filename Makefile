@@ -1,4 +1,4 @@
-.PHONY: build install clean test demoplayer
+.PHONY: build install clean test engine
 
 PREFIX ?= /usr/local
 ENGINE_DIR ?= ../trinity-engine
@@ -7,6 +7,9 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev
 
 build:
 	go build -ldflags "-X main.version=$(VERSION)" -o bin/trinity ./cmd/trinity
+ifdef BUILD_ENGINE
+	$(MAKE) engine
+endif
 	rm -rf web/dist/
 	npm --prefix web run build
 
@@ -18,10 +21,15 @@ clean:
 	rm -rf bin/
 	rm -rf web/dist/
 
-demoplayer:
-	$(MAKE) -C $(ENGINE_DIR) demoplayer
-	rm -rf web/public/demo
-	cp -r $(ENGINE_DIR)/dist/demo web/public/demo
+engine:
+	$(MAKE) -C $(ENGINE_DIR) web
+	rm -rf web/public/engine
+	mkdir -p web/public/engine
+	cp $(ENGINE_DIR)/dist/engine/loader.js web/public/engine/
+	cp $(ENGINE_DIR)/dist/engine/trinity.js web/public/engine/
+	cp $(ENGINE_DIR)/dist/engine/trinity.wasm web/public/engine/
+	cp $(ENGINE_DIR)/dist/engine/demo-config.json web/public/engine/
+	cp $(ENGINE_DIR)/dist/engine/client-config.json web/public/engine/
 
 test:
 	go test ./...

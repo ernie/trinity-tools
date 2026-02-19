@@ -17,7 +17,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      external: ['/demo/demo-loader.js'],
+      external: ['/engine/loader.js'],
     },
   },
 })
