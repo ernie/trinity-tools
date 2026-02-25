@@ -296,6 +296,26 @@ export function DemoPlayerPage() {
     return () => window.removeEventListener('keydown', handler, true)
   }, [])
 
+  // Safari doesn't deliver arrow key events through Emscripten's SDL2 keyboard path
+  // when pointer lock is active.  Intercept them in JS and inject via Cbuf_AddText.
+  useEffect(() => {
+    const arrowCmds: Record<string, string> = {
+      ArrowUp: 'followrecenter', ArrowDown: 'demopause',
+      ArrowLeft: 'tv_backward', ArrowRight: 'tv_forward',
+    }
+    const onDown = (e: KeyboardEvent) => {
+      const cmd = arrowCmds[e.code]
+      if (!cmd || !document.pointerLockElement) return
+      const mod = moduleRef.current
+      if (!mod?.ccall) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      mod.ccall('Cbuf_AddText', null, ['string'], [cmd + '\n'])
+    }
+    window.addEventListener('keydown', onDown, true)
+    return () => window.removeEventListener('keydown', onDown, true)
+  }, [])
+
   // Sync volume to engine via s_volume / s_musicvolume cvars
   useEffect(() => {
     const mod = moduleRef.current
