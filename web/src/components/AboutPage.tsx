@@ -1,16 +1,7 @@
+import { Link } from "react-router-dom";
 import { Header } from "./Header";
-import { useGitHubReleases } from "../hooks/useGitHubReleases";
-
-const DOWNLOAD_DESCRIPTIONS: Record<string, string> = {
-  "trinity-engine": "Custom build of Quake3e for flatscreen play (requires Trinity Mod)",
-  trinity: "Custom Quake 3 mod with Trinity features",
-  q3vr: "VR build for PC VR headsets",
-  ioq3quest: "VR build for Meta Quest",
-};
 
 export function AboutPage() {
-  const { releases } = useGitHubReleases();
-
   return (
     <div className="about-page">
       <Header title="About" className="about-header" />
@@ -21,62 +12,32 @@ export function AboutPage() {
           <p>
             In short: a love letter to Quake 3 Arena, and the games of id
             Software, more generally. I'd argue that the rate at which PC gaming
-            advanced during the 1990s has not really been matched, since. I
-            don't think it would have happened without id. Certainly, not as
-            quickly.
+            advanced during the 1990s has not really been matched since then. I
+            don't think it would have happened nearly so quickly without id.
           </p>
           <p>
-            This whole journey started after I rediscovered one of the greats in
-            VR, thanks to <a href="https://quake3.quakevr.com">Quake3Quest</a>,
-            and then <a href="https://ripper37.github.io/q3vr/">Quake 3 VR</a>.
-            I wanted to port some{" "}
-            <a href="https://github.com/ec-/baseq3a">baseq3a</a> features over
-            to it. That led to another idea, and another. And, well, here we
-            are. I hope a new generation of players get to experience a Quake 3
-            Arena even better than it was, originally, as a result.
+            This whole journey started after I rediscovered my love for Quake 3
+            in VR, thanks to{" "}
+            <a href="https://quake3.quakevr.com">Quake3Quest</a>, and then{" "}
+            <a href="https://ripper37.github.io/q3vr/">Quake 3 VR</a>. I wanted
+            to port some <a href="https://github.com/ec-/baseq3a">baseq3a</a>{" "}
+            features over to it. That led to another idea, and another. And,
+            well, here we are. I hope a new generation of players get to
+            experience a Quake 3 Arena even better than it was when I first fell
+            in love with it. It remains the best arena shooter of all time, in
+            my opinion. Yes, I've played Unreal Tournament. I said what I said.
           </p>
           <p>
-            Downloading is the only way to enjoy all Trinity features. The VR
-            builds include everything you need. For flatscreen play, you'll want
-            both the engine and the mod. This site is powered by{" "}
-            <a href="https://github.com/ernie/trinity-tools">trinity-tracker</a>,
-            which is also open source. Stop by the{" "}
-            <a href="https://discord.gg/tuDB2YNc7h">Team Beef Discord</a> if
-            you have questions or want to connect.
+            This site is powered by{" "}
+            <a href="https://github.com/ernie/trinity-tools">trinity-tracker</a>
+            , which is also open source. Stop by the{" "}
+            <a href="https://discord.gg/tuDB2YNc7h">Team Beef Discord</a> if you
+            have questions or want to connect.
           </p>
-          <div className="about-downloads">
-            {releases.map((r) => (
-              <a
-                key={r.repo}
-                href={r.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="about-download-item"
-              >
-                <div className="about-download-info">
-                  <span className="about-download-name">
-                    {r.displayName}
-                    {r.bundled && (
-                      <span className="about-download-bundled">
-                        <img
-                          src="/assets/icon-128.png"
-                          alt=""
-                          className="about-download-bundled-icon"
-                        />
-                        Trinity mod + engine included
-                      </span>
-                    )}
-                  </span>
-                  <span className="about-download-desc">
-                    {DOWNLOAD_DESCRIPTIONS[r.repo]}
-                  </span>
-                </div>
-                {r.version && (
-                  <span className="about-download-version">{r.version}</span>
-                )}
-              </a>
-            ))}
-          </div>
+          <p>
+            Want to get started?{" "}
+            <Link to="/getting-started">Go here first.</Link>
+          </p>
         </div>
 
         <div className="about-section">
@@ -128,7 +89,6 @@ export function AboutPage() {
           </p>
         </div>
       </div>
-
     </div>
   );
 }

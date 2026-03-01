@@ -18,6 +18,7 @@ export function PageNav() {
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
+    if (path === '/about') return location.pathname.startsWith('/about') || location.pathname.startsWith('/getting-started')
     return location.pathname.startsWith(path)
   }
 
@@ -74,13 +75,17 @@ export function PageNav() {
                       onClick={e => e.preventDefault()}
                     >
                       <img src="/assets/icon-128.png" alt="" className="download-item-bundled-icon" />
-                      <span className="download-item-bundled-tip">Trinity mod + engine included</span>
+                      <span className="download-item-bundled-tip">Includes Trinity mod</span>
                     </span>
                   )}
                 </span>
                 {r.version && <span className="download-item-version">{r.version}</span>}
               </a>
             ))}
+            <div className="download-panel-getting-started">
+              <span className="download-panel-getting-started-label">Just getting started?</span>
+              <Link to="/getting-started">Go here first.</Link>
+            </div>
           </div>
         )}
       </div>

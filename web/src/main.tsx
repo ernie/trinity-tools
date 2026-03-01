@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App'
-import { PlayersPage, AccountPage, LeaderboardPage, MatchesPage, MatchDetailPage, DemoPlayerPage, PlayPage, AboutPage } from './components'
+import { PlayersPage, AccountPage, LeaderboardPage, MatchesPage, MatchDetailPage, DemoPlayerPage, PlayPage, AboutPage, GettingStartedPage } from './components'
 import { VerifiedPlayersProvider } from './hooks/useVerifiedPlayers'
 import './index.css'
 
@@ -21,6 +21,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/getting-started" element={<GettingStartedPage />} />
         </Routes>
       </BrowserRouter>
     </VerifiedPlayersProvider>

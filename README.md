@@ -30,8 +30,7 @@ sudo trinity init
 sudo usermod -aG quake $USER
 
 # Install web assets
-sudo cp -r web/* /var/lib/trinity/web/
-sudo chown -R quake:quake /var/lib/trinity/web
+sudo -u quake cp -r web/* /var/lib/trinity/web/
 
 # Edit config with your settings
 sudo -u quake vi /etc/trinity/config.yml
@@ -114,6 +113,7 @@ sudo trinity server remove ctf
 ```
 
 `server add` flags:
+
 - `--port` - server port (default: next available starting from 27960)
 - `--game` - game directory, e.g. `missionpack` (default: `baseq3`)
 - `--display-name` - display name (default: uppercase of name)
@@ -165,8 +165,8 @@ server:
   poll_interval: 5s
   static_dir: "/var/lib/trinity/web"
   quake3_dir: "/usr/lib/quake3" # For asset extraction commands
-  service_user: "quake"         # Service user for privilege dropping
-  use_systemd: true             # Set by `trinity init`, or override manually
+  service_user: "quake" # Service user for privilege dropping
+  use_systemd: true # Set by `trinity init`, or override manually
 
 database:
   path: "/var/lib/trinity/trinity.db"
@@ -192,7 +192,7 @@ q3_servers:
 | `server.static_dir`          | Path to built web frontend                                         |
 | `server.quake3_dir`          | Path to Quake 3 install (default: `/usr/lib/quake3`)               |
 | `server.service_user`        | Service user for privilege dropping (default: `quake`)             |
-| `server.use_systemd`         | Enable systemd integration (auto-detected by `trinity init`)      |
+| `server.use_systemd`         | Enable systemd integration (auto-detected by `trinity init`)       |
 | `database.path`              | SQLite database file path                                          |
 | `q3_servers[].name`          | Display name for the server                                        |
 | `q3_servers[].address`       | UDP address for server queries                                     |
@@ -223,8 +223,7 @@ sudo trinity init
 sudo usermod -aG quake $USER
 
 # Copy web frontend
-sudo cp -r web/dist/* /var/lib/trinity/web/
-sudo chown -R quake:quake /var/lib/trinity/web
+sudo -u quake cp -r web/dist/* /var/lib/trinity/web/
 
 # Edit config with your settings
 sudo -u quake vi /etc/trinity/config.yml

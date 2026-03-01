@@ -9,8 +9,8 @@ export interface ReleaseInfo {
 }
 
 const REPOS = [
-  { repo: 'trinity-engine', displayName: 'Trinity Engine', bundled: false },
   { repo: 'trinity', displayName: 'Trinity Mod', bundled: false },
+  { repo: 'trinity-engine', displayName: 'Trinity Engine', bundled: true },
   { repo: 'q3vr', displayName: 'Quake 3 VR', bundled: true },
   { repo: 'ioq3quest', displayName: 'Quake3Quest', bundled: true },
 ]
