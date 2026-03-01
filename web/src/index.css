@@ -4620,3 +4620,129 @@ h2 {
   background: rgba(255, 255, 255, 0.3);
   color: #fff;
 }
+
+/* Download dropdown */
+.download-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.download-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--accent-dim);
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.download-toggle:hover {
+  color: var(--accent);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.download-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: var(--bg-card);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 8px 0;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.download-panel-title {
+  padding: 4px 14px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid #222;
+  margin-bottom: 4px;
+}
+
+.download-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+
+.download-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.download-item-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.download-item-version {
+  color: var(--green);
+  font-family: monospace;
+  font-size: 11px;
+  margin-left: auto;
+}
+
+.download-item-bundled {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.download-item-bundled-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.download-item-bundled:hover .download-item-bundled-icon {
+  opacity: 1;
+}
+
+.download-item-bundled-tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: -4px;
+  white-space: nowrap;
+  background: #222;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 400;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.download-item-bundled:hover .download-item-bundled-tip,
+.download-item-bundled:active .download-item-bundled-tip {
+  display: block;
+}
+
+@media (pointer: coarse) {
+  .download-item-bundled:focus .download-item-bundled-tip,
+  .download-item-bundled:active .download-item-bundled-tip {
+    display: block;
+  }
+}
