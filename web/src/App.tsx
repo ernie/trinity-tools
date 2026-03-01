@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { Link } from "react-router-dom";
 import { useWebSocket } from "./useWebSocket";
 import { useAuth } from "./hooks/useAuth";
 import {
@@ -7,14 +6,12 @@ import {
   ActivityLog,
   ConnectionStatus,
   RecentMatches,
-  LoginForm,
   RconSidebar,
   PlayerStatsModal,
-  PageNav,
   AppLogo,
 } from "./components";
+import { Header } from "./components/Header";
 import { PasswordChangeModal } from "./components/PasswordChangeModal";
-import { UserManagement } from "./components/UserManagement";
 import type {
   Server,
   ServerStatus,
@@ -60,11 +57,10 @@ function App() {
   } | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [showUserManagement, setShowUserManagement] = useState(false);
   const activityIdRef = useRef(0);
   const serversRef = useRef<Map<number, ServerStatus>>(new Map());
 
-  const { auth, login, logout, changePassword } = useAuth();
+  const { auth, changePassword } = useAuth();
 
   // Show password change modal if required
   useEffect(() => {
@@ -619,42 +615,7 @@ function App() {
     >
       <ConnectionStatus isConnected={isConnected} />
 
-      <header className="app-header">
-        <h1>
-          <AppLogo linkToHome={false} />
-          Trinity
-        </h1>
-        <PageNav />
-        <div className="auth-section">
-          {auth.isAuthenticated ? (
-            <div className="user-info">
-              {auth.isAdmin && (
-                <>
-                  <Link to="/play" className="admin-btn">
-                    Play
-                  </Link>
-                  <button
-                    onClick={() => setShowUserManagement(true)}
-                    className="admin-btn"
-                  >
-                    Users
-                  </button>
-                </>
-              )}
-              <Link to="/account" className="username-link">
-                {auth.username}
-              </Link>
-              <button onClick={logout} className="logout-btn">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <LoginForm
-              onLogin={(username, password) => login({ username, password })}
-            />
-          )}
-        </div>
-      </header>
+      <Header title="Trinity" className="app-header" linkToHome={false} />
 
       <aside className={`left-sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
@@ -744,13 +705,6 @@ function App() {
         />
       )}
 
-      {showUserManagement && auth.isAdmin && auth.token && (
-        <UserManagement
-          token={auth.token}
-          currentUsername={auth.username!}
-          onClose={() => setShowUserManagement(false)}
-        />
-      )}
     </div>
   );
 }

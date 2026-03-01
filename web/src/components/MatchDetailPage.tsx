@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { AppLogo } from './AppLogo'
-import { PageNav } from './PageNav'
 import { MatchCard } from './MatchCard'
-import { LoginForm } from './LoginForm'
-import { useAuth } from '../hooks/useAuth'
+import { Header } from './Header'
 import type { MatchSummary } from '../types'
 
 export function MatchDetailPage() {
-  const { auth, login, logout } = useAuth()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [match, setMatch] = useState<MatchSummary | null>(null)
@@ -52,23 +48,7 @@ export function MatchDetailPage() {
 
   return (
     <div className="match-detail-page">
-      <header className="match-detail-header">
-        <h1>
-          <AppLogo />
-          Match Details
-        </h1>
-        <PageNav />
-        <div className="auth-section">
-          {auth.isAuthenticated ? (
-            <div className="user-info">
-              <Link to="/account" className="username-link">{auth.username}</Link>
-              <button onClick={logout} className="logout-btn">Logout</button>
-            </div>
-          ) : (
-            <LoginForm onLogin={(username, password) => login({ username, password })} />
-          )}
-        </div>
-      </header>
+      <Header title="Match Details" className="match-detail-header" />
 
       <div className="match-detail-content">
         <div className="match-detail-nav">

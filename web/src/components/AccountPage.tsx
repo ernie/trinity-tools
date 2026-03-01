@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { AppLogo } from './AppLogo'
-import { PageNav } from './PageNav'
+import { useNavigate } from 'react-router-dom'
 import { ColoredText } from './ColoredText'
 import { PlayerPortrait } from './PlayerPortrait'
 import { PlayerRecentMatches } from './PlayerRecentMatches'
-import { UserManagement } from './UserManagement'
+import { Header } from './Header'
 import { StatItem } from './StatItem'
 import { PeriodSelector } from './PeriodSelector'
 import { useAuth } from '../hooks/useAuth'
@@ -15,7 +13,7 @@ import type { AccountProfile, TimePeriod } from '../types'
 
 export function AccountPage() {
   const navigate = useNavigate()
-  const { auth, loading: authLoading, logout, changePassword } = useAuth()
+  const { auth, loading: authLoading, changePassword } = useAuth()
 
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [period, setPeriod] = useState<TimePeriod>('all')
@@ -39,7 +37,6 @@ export function AccountPage() {
   const [passwordError, setPasswordError] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
-  const [showUserManagement, setShowUserManagement] = useState(false)
 
   // Redirect if not authenticated (after auth check completes)
   useEffect(() => {
@@ -168,22 +165,7 @@ export function AccountPage() {
 
   return (
     <div className="account-page">
-      <header className="account-header">
-        <h1>
-          <AppLogo />
-          My Account
-        </h1>
-        <PageNav />
-        <div className="auth-section">
-          <div className="user-info">
-            {auth.isAdmin && (
-              <button onClick={() => setShowUserManagement(true)} className="admin-btn">Users</button>
-            )}
-            <Link to="/account" className="username-link">{auth.username}</Link>
-            <button onClick={logout} className="logout-btn">Logout</button>
-          </div>
-        </div>
-      </header>
+      <Header title="My Account" className="account-header" />
 
       {loading && <div className="loading">Loading...</div>}
       {error && <div className="error-message">{error}</div>}
@@ -399,13 +381,6 @@ export function AccountPage() {
         </div>
       )}
 
-      {showUserManagement && auth.isAdmin && auth.token && (
-        <UserManagement
-          token={auth.token}
-          currentUsername={auth.username!}
-          onClose={() => setShowUserManagement(false)}
-        />
-      )}
     </div>
   )
 }

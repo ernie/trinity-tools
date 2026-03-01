@@ -74,7 +74,7 @@ export function useGitHubReleases() {
           repo: r.repo,
           displayName: r.displayName,
           version: data.tag_name as string,
-          url: data.html_url as string,
+          url: `https://github.com/ernie/${r.repo}/releases/latest`,
           bundled: r.bundled,
         }))
         .catch(() => ({

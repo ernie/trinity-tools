@@ -1,15 +1,12 @@
 import { useState, useCallback } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { AppLogo } from './AppLogo'
+import { useParams, useNavigate } from 'react-router-dom'
 import { BotBadge } from './BotBadge'
-import { PageNav } from './PageNav'
 import { ColoredText } from './ColoredText'
 import { PlayerPortrait } from './PlayerPortrait'
 import { PlayerRecentMatches } from './PlayerRecentMatches'
 import { PlayerSessions } from './PlayerSessions'
 import { PlayerBadge } from './PlayerBadge'
-import { LoginForm } from './LoginForm'
-import { UserManagement } from './UserManagement'
+import { Header } from './Header'
 import { StatItem } from './StatItem'
 import { PeriodSelector } from './PeriodSelector'
 import { useAuth } from '../hooks/useAuth'
@@ -21,7 +18,7 @@ import type { TimePeriod, PlayerProfile, PlayerGUID } from '../types'
 export function PlayersPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { auth, login, logout } = useAuth()
+  const { auth } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<PlayerProfile[]>([])
@@ -31,7 +28,6 @@ export function PlayersPage() {
   const { stats, loading, error, refetch } = usePlayerStats(id ? Number(id) : undefined, period)
 
   // Admin state
-  const [showUserManagement, setShowUserManagement] = useState(false)
   const [showMergeSearch, setShowMergeSearch] = useState(false)
   const [mergeQuery, setMergeQuery] = useState('')
   const [mergeResults, setMergeResults] = useState<PlayerProfile[]>([])
@@ -167,26 +163,7 @@ export function PlayersPage() {
 
   return (
     <div className="players-page">
-      <header className="players-header">
-        <h1>
-          <AppLogo />
-          Player Stats
-        </h1>
-        <PageNav />
-        <div className="auth-section">
-          {auth.isAuthenticated ? (
-            <div className="user-info">
-              {auth.isAdmin && (
-                <button onClick={() => setShowUserManagement(true)} className="admin-btn">Users</button>
-              )}
-              <Link to="/account" className="username-link">{auth.username}</Link>
-              <button onClick={logout} className="logout-btn">Logout</button>
-            </div>
-          ) : (
-            <LoginForm onLogin={(username, password) => login({ username, password })} />
-          )}
-        </div>
-      </header>
+      <Header title="Player Stats" className="players-header" />
 
       <div className="players-search">
         <input
@@ -389,13 +366,6 @@ export function PlayersPage() {
         </div>
       )}
 
-      {showUserManagement && auth.isAdmin && auth.token && (
-        <UserManagement
-          token={auth.token}
-          currentUsername={auth.username!}
-          onClose={() => setShowUserManagement(false)}
-        />
-      )}
     </div>
   )
 }

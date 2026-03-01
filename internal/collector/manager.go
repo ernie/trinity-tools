@@ -597,7 +597,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 
 				// Greet human players on initial connection only (skip map changes, bots, startup)
 				if m.startupComplete && isNewSession && client.playerID != 0 {
-					go m.greetPlayer(ctx, serverID, data.ClientID, client.playerID, client.name)
+					go m.greetPlayer(ctx, serverID, data.ClientID, client.playerID, client.name, client.isVR)
 				}
 			}
 		}
@@ -1518,7 +1518,7 @@ func (m *ServerManager) sendTell(serverID int64, clientID int, message string) {
 }
 
 // greetPlayer sends a welcome message to a player when they join
-func (m *ServerManager) greetPlayer(ctx context.Context, serverID int64, clientID int, playerID int64, playerName string) {
+func (m *ServerManager) greetPlayer(ctx context.Context, serverID int64, clientID int, playerID int64, playerName string, isVR bool) {
 	// Get player stats
 	stats, err := m.store.GetPlayerStatsByID(ctx, playerID, "all")
 	if err != nil {
@@ -1554,6 +1554,10 @@ func (m *ServerManager) greetPlayer(ctx context.Context, serverID int64, clientI
 	}
 
 	m.sendTell(serverID, clientID, message)
+
+	if !isVR {
+		m.sendTell(serverID, clientID, "You're missing out! Download an updated VR client. Info at ^5trinity.ernie.io^7.")
+	}
 }
 
 // isNumeric checks if a string contains only digits

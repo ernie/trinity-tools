@@ -1,48 +1,19 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { AppLogo } from "./AppLogo";
-import { PageNav } from "./PageNav";
-import { LoginForm } from "./LoginForm";
-import { UserManagement } from "./UserManagement";
-import { useAuth } from "../hooks/useAuth";
+import { Header } from "./Header";
+import { useGitHubReleases } from "../hooks/useGitHubReleases";
+
+const DOWNLOAD_DESCRIPTIONS: Record<string, string> = {
+  "trinity-engine": "Custom build of Quake3e for flatscreen play (requires Trinity Mod)",
+  trinity: "Custom Quake 3 mod with Trinity features",
+  q3vr: "VR build for PC VR headsets",
+  ioq3quest: "VR build for Meta Quest",
+};
 
 export function AboutPage() {
-  const { auth, login, logout } = useAuth();
-  const [showUserManagement, setShowUserManagement] = useState(false);
+  const { releases } = useGitHubReleases();
 
   return (
     <div className="about-page">
-      <header className="about-header">
-        <h1>
-          <AppLogo />
-          About
-        </h1>
-        <PageNav />
-        <div className="auth-section">
-          {auth.isAuthenticated ? (
-            <div className="user-info">
-              {auth.isAdmin && (
-                <button
-                  onClick={() => setShowUserManagement(true)}
-                  className="admin-btn"
-                >
-                  Users
-                </button>
-              )}
-              <Link to="/account" className="username-link">
-                {auth.username}
-              </Link>
-              <button onClick={logout} className="logout-btn">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <LoginForm
-              onLogin={(username, password) => login({ username, password })}
-            />
-          )}
-        </div>
-      </header>
+      <Header title="About" className="about-header" />
 
       <div className="about-content">
         <div className="about-section">
@@ -62,30 +33,50 @@ export function AboutPage() {
             <a href="https://github.com/ec-/baseq3a">baseq3a</a> features over
             to it. That led to another idea, and another. And, well, here we
             are. I hope a new generation of players get to experience a Quake 3
-            Arena even better than it was, originally, as a result. I regularly
-            release updated builds of both for people to try over on the{" "}
-            <a href="https://discord.gg/tuDB2YNc7h">Team Beef Discord</a>.
+            Arena even better than it was, originally, as a result.
           </p>
-          <p>What you see on this site is the combination of:</p>
-          <ul>
-            <li>
-              <a href="https://github.com/ernie/trinity-tools">
-                trinity-tracker
-              </a>{" "}
-              &mdash; this stats tracker
-            </li>
-            <li>
-              <a href="https://github.com/ernie/trinity">trinity</a> &mdash;
-              custom Quake 3 mod
-            </li>
-            <li>
-              <a href="https://github.com/ernie/trinity-engine">
-                trinity-engine
-              </a>{" "}
-              &mdash; custom build of Quake3e used on the server (and a custom
-              flatscreen engine)
-            </li>
-          </ul>
+          <p>
+            Downloading is the only way to enjoy all Trinity features. The VR
+            builds include everything you need. For flatscreen play, you'll want
+            both the engine and the mod. This site is powered by{" "}
+            <a href="https://github.com/ernie/trinity-tools">trinity-tracker</a>,
+            which is also open source. Stop by the{" "}
+            <a href="https://discord.gg/tuDB2YNc7h">Team Beef Discord</a> if
+            you have questions or want to connect.
+          </p>
+          <div className="about-downloads">
+            {releases.map((r) => (
+              <a
+                key={r.repo}
+                href={r.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="about-download-item"
+              >
+                <div className="about-download-info">
+                  <span className="about-download-name">
+                    {r.displayName}
+                    {r.bundled && (
+                      <span className="about-download-bundled">
+                        <img
+                          src="/assets/icon-128.png"
+                          alt=""
+                          className="about-download-bundled-icon"
+                        />
+                        Trinity mod + engine included
+                      </span>
+                    )}
+                  </span>
+                  <span className="about-download-desc">
+                    {DOWNLOAD_DESCRIPTIONS[r.repo]}
+                  </span>
+                </div>
+                {r.version && (
+                  <span className="about-download-version">{r.version}</span>
+                )}
+              </a>
+            ))}
+          </div>
         </div>
 
         <div className="about-section">
@@ -138,13 +129,6 @@ export function AboutPage() {
         </div>
       </div>
 
-      {showUserManagement && auth.isAdmin && auth.token && (
-        <UserManagement
-          token={auth.token}
-          currentUsername={auth.username!}
-          onClose={() => setShowUserManagement(false)}
-        />
-      )}
     </div>
   );
 }

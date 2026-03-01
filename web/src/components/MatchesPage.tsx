@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { AppLogo } from './AppLogo'
-import { PageNav } from './PageNav'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MatchCard } from './MatchCard'
-import { LoginForm } from './LoginForm'
-import { useAuth } from '../hooks/useAuth'
+import { Header } from './Header'
 import { GAME_TYPE_LABELS, type GameTypeFilter } from '../constants/labels'
 import type { MatchSummary } from '../types'
 
@@ -17,7 +14,7 @@ function parseDateTimeLocal(value: string): Date | null {
 }
 
 export function MatchesPage() {
-  const { auth, login, logout } = useAuth()
+
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -139,23 +136,7 @@ export function MatchesPage() {
 
   return (
     <div className="matches-page">
-      <header className="matches-header">
-        <h1>
-          <AppLogo />
-          Match Browser
-        </h1>
-        <PageNav />
-        <div className="auth-section">
-          {auth.isAuthenticated ? (
-            <div className="user-info">
-              <Link to="/account" className="username-link">{auth.username}</Link>
-              <button onClick={logout} className="logout-btn">Logout</button>
-            </div>
-          ) : (
-            <LoginForm onLogin={(username, password) => login({ username, password })} />
-          )}
-        </div>
-      </header>
+      <Header title="Match Browser" className="matches-header" />
 
       <div className="match-filters">
         <div className="game-type-selector">

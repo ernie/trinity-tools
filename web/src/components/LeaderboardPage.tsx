@@ -1,16 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { AppLogo } from "./AppLogo";
 import { ColoredText } from "./ColoredText";
 import { PlayerPortrait } from "./PlayerPortrait";
 import { PlayerBadge } from "./PlayerBadge";
 import { FlagIcon } from "./FlagIcon";
 import { MedalIcon } from "./MedalIcon";
-import { PageNav } from "./PageNav";
-import { LoginForm } from "./LoginForm";
-import { UserManagement } from "./UserManagement";
+import { Header } from "./Header";
 import { PeriodSelector } from "./PeriodSelector";
-import { useAuth } from "../hooks/useAuth";
+
 import { GAME_TYPE_LABELS, type GameTypeFilter } from "../constants/labels";
 import { formatNumber, stripVRPrefix } from "../utils";
 import type {
@@ -119,14 +116,12 @@ function getCategoriesForGameType(
 }
 
 export function LeaderboardPage() {
-  const { auth, login, logout } = useAuth();
   const [gameType, setGameType] = useState<GameTypeFilter>("all");
   const [category, setCategory] = useState<LeaderboardCategory>("matches");
   const [period, setPeriod] = useState<TimePeriod>("all");
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showUserManagement, setShowUserManagement] = useState(false);
 
   const availableCategories = getCategoriesForGameType(gameType);
 
@@ -156,26 +151,7 @@ export function LeaderboardPage() {
 
   return (
     <div className="leaderboard-page">
-      <header className="leaderboard-header">
-        <h1>
-          <AppLogo />
-          Leaderboard
-        </h1>
-        <PageNav />
-        <div className="auth-section">
-          {auth.isAuthenticated ? (
-            <div className="user-info">
-              {auth.isAdmin && (
-                <button onClick={() => setShowUserManagement(true)} className="admin-btn">Users</button>
-              )}
-              <Link to="/account" className="username-link">{auth.username}</Link>
-              <button onClick={logout} className="logout-btn">Logout</button>
-            </div>
-          ) : (
-            <LoginForm onLogin={(username, password) => login({ username, password })} />
-          )}
-        </div>
-      </header>
+      <Header title="Leaderboard" className="leaderboard-header" />
 
       <div className="filter-row">
         <div className="game-type-selector">
@@ -223,13 +199,6 @@ export function LeaderboardPage() {
         )}
       </div>
 
-      {showUserManagement && auth.isAdmin && auth.token && (
-        <UserManagement
-          token={auth.token}
-          currentUsername={auth.username!}
-          onClose={() => setShowUserManagement(false)}
-        />
-      )}
     </div>
   );
 }
