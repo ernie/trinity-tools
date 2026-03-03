@@ -8,6 +8,85 @@ const DOWNLOAD_DESCRIPTIONS: Record<string, string> = {
   ioq3quest: "VR engine for Meta Quest (2, 3, or 3S)",
 };
 
+const CONFIG_DOWNLOADS = [
+  {
+    name: "Trinity Engine (Flatscreen)",
+    href: "/configs/trinity-autoexec.cfg",
+    desc: "Quake3e-based engine for desktop",
+  },
+  {
+    name: "Quake 3 VR",
+    href: "/configs/q3vr-autoexec.cfg",
+    desc: "PCVR engine — includes controller bindings",
+  },
+  {
+    name: "Quake3Quest",
+    href: "/configs/ioq3quest-autoexec.cfg",
+    desc: "Quest 2, 3, and 3S — includes controller bindings",
+  },
+];
+
+interface FeatureItem {
+  name: string;
+  cvar?: string;
+  desc: string;
+  video?: string;
+}
+
+const FEATURES: FeatureItem[] = [
+  {
+    name: "VR Tracking",
+    desc: "1:1 head and weapon hand tracking in VR — your player's head and weapon move exactly as you do.",
+    video: "vr_tracking",
+  },
+  {
+    name: "Damage Plums",
+    cvar: "cg_damagePlums 1",
+    desc: "Floating damage numbers appear on each hit, showing exactly how much damage you dealt.",
+    video: "cg_damagePlums",
+  },
+  {
+    name: "Blood Particles",
+    cvar: "cg_bloodParticles 1",
+    desc: "Particle-based blood effects with wall and floor splats, replacing the default sprite blood.",
+    video: "cg_bloodParticles",
+  },
+  {
+    name: "Damage Effect",
+    cvar: "cg_damageEffect 1",
+    desc: "Directional red vignette when taking damage, replacing the default blood splatter overlay.",
+    video: "cg_damageEffect",
+  },
+  {
+    name: "Orbit Camera",
+    cvar: "cg_followMode 1 / cg_smoothFollow 1",
+    desc: "Third-person orbit camera for spectating, with smooth transitions between players.",
+    video: "orbit_camera",
+  },
+  {
+    name: "TV Demo Scrubbing",
+    cvar: "+tv_scrub",
+    desc: "Scrub forward and backward through recorded TV demos.",
+    video: "tvd_scrub",
+  },
+  {
+    name: "TV Demo Pause",
+    cvar: "demopause",
+    desc: "Pause and resume TV demo playback.",
+    video: "tvd_pause",
+  },
+  {
+    name: "Hit Sounds",
+    cvar: "cg_hitSounds 1",
+    desc: "Damage-scaled hit sounds — pitch varies with the amount of damage dealt (lower pitch = higher damage).",
+  },
+  {
+    name: "TV Demos",
+    cvar: "cl_tvDownload",
+    desc: "Server-side TV demos are recorded automatically. Set cl_tvDownload to control whether you're prompted to download the demo at end of match.",
+  },
+];
+
 export function GettingStartedPage() {
   const { releases } = useGitHubReleases();
 
@@ -131,6 +210,105 @@ export function GettingStartedPage() {
             If you end up with multiple GUIDs, you can link them together on
             your <a href="/account">Account</a> page.
           </p>
+        </div>
+
+        <div className="about-section">
+          <h2>Configuration</h2>
+          <p>
+            Trinity adds gameplay features beyond base Quake 3. Create an{" "}
+            <code>autoexec.cfg</code> in your <code>baseq3</code> folder to
+            enable them, or download a suggested starting point for your engine:
+          </p>
+          <div className="about-downloads">
+            {CONFIG_DOWNLOADS.map((c) => (
+              <a
+                key={c.href}
+                href={c.href}
+                download="autoexec.cfg"
+                className="about-download-item"
+              >
+                <div className="about-download-info">
+                  <span className="about-download-name">{c.name}</span>
+                  <span className="about-download-desc">{c.desc}</span>
+                </div>
+                <span className="about-download-version">autoexec.cfg</span>
+              </a>
+            ))}
+          </div>
+
+          <h3 className="about-features-heading">Trinity Features</h3>
+          <div className="about-features">
+            {FEATURES.map((f) => (
+              <details key={f.name} className="about-feature">
+                <summary>
+                  <span className="about-feature-name">{f.name}</span>
+                  {f.cvar && (
+                    <code className="about-feature-cvar">{f.cvar}</code>
+                  )}
+                </summary>
+                <div className="about-feature-content">
+                  <p>{f.desc}</p>
+                  {f.video && (
+                    <video autoPlay loop muted playsInline>
+                      <source
+                        src={`/assets/videos/${f.video}.webm`}
+                        type="video/webm"
+                      />
+                      <source
+                        src={`/assets/videos/${f.video}.mp4`}
+                        type="video/mp4"
+                      />
+                    </video>
+                  )}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+
+        <div className="about-section">
+          <h2>Server Administration</h2>
+          <p>
+            These cvars are available for server operators running Trinity.
+          </p>
+          <ul>
+            <li>
+              <code>g_overtimelimit</code> (default: <code>0</code>) — overtime
+              duration in minutes for tied matches (0 = sudden death)
+            </li>
+            <li>
+              <code>g_teamDMSpawnThreshold</code> (default: <code>8</code>) —
+              use team/CTF spawn points on maps with fewer FFA spawns than this
+              value (avoids telefrag-fests in Team DM)
+            </li>
+            <li>
+              <code>sv_tvAuto</code> (default: <code>0</code>) — automatically
+              start TV recording on map load
+            </li>
+            <li>
+              <code>sv_tvAutoMinPlayers</code> (default: <code>0</code>) —
+              minimum concurrent non-spectator human players to keep an
+              auto-recording (0 = always keep)
+            </li>
+            <li>
+              <code>sv_tvAutoMinPlayersSecs</code> (default: <code>0</code>) —
+              seconds the player threshold must be continuously met (0 =
+              instantaneous)
+            </li>
+            <li>
+              <code>sv_tvpath</code> (default: <code>demos</code>) — directory
+              for TV recordings
+            </li>
+            <li>
+              <code>sv_tvDownload</code> (default: <code>0</code>) — notify
+              clients to download TV recordings via HTTP at end of match
+              (requires <code>sv_dlURL</code>)
+            </li>
+            <li>
+              <code>sv_dlURL</code> (default: empty) — base URL for HTTP
+              downloads (pk3 and tvd)
+            </li>
+          </ul>
         </div>
       </div>
     </div>
