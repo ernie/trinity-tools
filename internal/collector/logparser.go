@@ -67,15 +67,16 @@ type ClientConnectData struct {
 }
 
 type ClientUserinfoData struct {
-	ClientID int
-	Name     string
-	Team     int
-	Model    string
-	IsBot    bool
-	IsVR     bool
-	Skill    float64 // Bot skill level (1-5), 0 if not a bot
-	GUID     string
-	Userinfo map[string]string
+	ClientID        int
+	Name            string
+	Team            int
+	Model           string
+	IsBot           bool
+	IsVR            bool
+	IsTrinityEngine bool
+	Skill           float64 // Bot skill level (1-5), 0 if not a bot
+	GUID            string
+	Userinfo        map[string]string
 }
 
 type ClientDisconnectData struct {
@@ -546,18 +547,20 @@ func ParseLine(line string) (*LogEvent, error) {
 
 		// VR client detection: presence of "vr" field with value "1"
 		isVR := userinfo["vr"] == "1"
+		isTrinityEngine := userinfo["te"] == "1"
 
 		event.Type = EventTypeClientUserinfo
 		event.Data = ClientUserinfoData{
-			ClientID: clientID,
-			Name:     userinfo["n"],
-			Team:     team,
-			Model:    model,
-			IsBot:    isBot,
-			IsVR:     isVR,
-			Skill:    skill,
-			GUID:     userinfo["g"],
-			Userinfo: userinfo,
+			ClientID:        clientID,
+			Name:            userinfo["n"],
+			Team:            team,
+			Model:           model,
+			IsBot:           isBot,
+			IsVR:            isVR,
+			IsTrinityEngine: isTrinityEngine,
+			Skill:           skill,
+			GUID:            userinfo["g"],
+			Userinfo:        userinfo,
 		}
 		return event, nil
 	}

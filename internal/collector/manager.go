@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -63,6 +64,7 @@ type clientState struct {
 	model              string // player model (e.g., "sarge/krusade")
 	isBot              bool
 	isVR               bool
+	isTrinityEngine    bool
 	skill              float64 // bot skill level (1-5), 0 if human
 	team               int
 	joinedAt           time.Time
@@ -479,6 +481,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 		client.guid = data.GUID
 		client.isBot = data.IsBot
 		client.isVR = data.IsVR
+		client.isTrinityEngine = data.IsTrinityEngine
 		client.skill = data.Skill
 		client.team = data.Team
 		client.model = data.Model
@@ -597,7 +600,7 @@ func (m *ServerManager) handleLogEvent(ctx context.Context, serverID int64, even
 
 				// Greet human players on initial connection only (skip map changes, bots, startup)
 				if m.startupComplete && isNewSession && client.playerID != 0 {
-					go m.greetPlayer(ctx, serverID, data.ClientID, client.playerID, client.name, client.isVR)
+					go m.greetPlayer(ctx, serverID, data.ClientID, client.playerID, client.name, client.cleanName, client.isVR, client.isTrinityEngine)
 				}
 			}
 		}
@@ -1505,20 +1508,24 @@ func (m *ServerManager) handleLinkCommand(ctx context.Context, serverID int64, s
 
 // sendTell sends a private message to a player via RCON (runs async to avoid deadlock)
 func (m *ServerManager) sendTell(serverID int64, clientID int, message string) {
+	go m.sendTellSync(serverID, clientID, message)
+}
+
+// sendTellSync sends a private message to a player via RCON synchronously.
+// Use this when ordering matters (e.g., sending multiple messages in sequence).
+func (m *ServerManager) sendTellSync(serverID int64, clientID int, message string) {
 	cmd := fmt.Sprintf("tell %d ^7%s", clientID, message)
 	log.Printf("Sending RCON tell: %q", cmd)
-	go func() {
-		response, err := m.ExecuteRcon(serverID, cmd)
-		if err != nil {
-			log.Printf("Error sending tell to client %d on server %d: %v", clientID, serverID, err)
-		} else {
-			log.Printf("RCON response: %q", response)
-		}
-	}()
+	response, err := m.ExecuteRcon(serverID, cmd)
+	if err != nil {
+		log.Printf("Error sending tell to client %d on server %d: %v", clientID, serverID, err)
+	} else {
+		log.Printf("RCON response: %q", response)
+	}
 }
 
 // greetPlayer sends a welcome message to a player when they join
-func (m *ServerManager) greetPlayer(ctx context.Context, serverID int64, clientID int, playerID int64, playerName string, isVR bool) {
+func (m *ServerManager) greetPlayer(ctx context.Context, serverID int64, clientID int, playerID int64, playerName string, cleanName string, isVR bool, isTrinityEngine bool) {
 	// Get player stats
 	stats, err := m.store.GetPlayerStatsByID(ctx, playerID, "all")
 	if err != nil {
@@ -1553,10 +1560,16 @@ func (m *ServerManager) greetPlayer(ctx context.Context, serverID int64, clientI
 		}
 	}
 
-	m.sendTell(serverID, clientID, message)
+	m.sendTellSync(serverID, clientID, message)
 
 	if !isVR {
-		m.sendTell(serverID, clientID, "You're missing out! Download an updated VR client. Info at ^5trinity.ernie.io^7.")
+		if strings.Contains(cleanName, "[VR]") {
+			m.sendTellSync(serverID, clientID, "Your VR client is outdated. Upgrade to enjoy all Trinity features! More info at ^5trinity.ernie.io/getting-started")
+		} else if !isTrinityEngine {
+			m.sendTellSync(serverID, clientID, "It looks like you're missing out on Trinity-specific features on this server. Go to ^5trinity.ernie.io/getting-started ^7to upgrade.")
+		} else {
+			m.sendTellSync(serverID, clientID, "Haven't tried Quake 3 in VR yet? It's a whole new dimension (literally). Visit ^5trinity.ernie.io/getting-started ^7to learn more.")
+		}
 	}
 }
 
