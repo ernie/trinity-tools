@@ -1420,6 +1420,8 @@ func (m *ServerManager) handleCommand(ctx context.Context, serverID int64, state
 	switch cmd {
 	case "link":
 		m.handleLinkCommand(ctx, serverID, state, clientID, args)
+	case "claim":
+		m.handleClaimCommand(ctx, serverID, state, clientID)
 	default:
 		m.sendTell(serverID, clientID, "^1Unknown command: ^7"+cmd)
 	}
@@ -1448,25 +1450,6 @@ func (m *ServerManager) handleLinkCommand(ctx context.Context, serverID int64, s
 		return
 	}
 
-	// Get the primary player to compare names
-	primaryPlayer, err := m.store.GetPlayerByID(ctx, linkCode.PlayerID)
-	if err != nil {
-		m.sendTell(serverID, clientID, "^1Error: Could not find primary player.")
-		return
-	}
-
-	// Validate name match (exact clean_name match)
-	if client.cleanName != primaryPlayer.CleanName {
-		m.sendTell(serverID, clientID, "^1Name mismatch. ^7Your in-game name must match your primary player name.")
-		return
-	}
-
-	// Check if this GUID already belongs to the primary player
-	if client.playerID == linkCode.PlayerID {
-		m.sendTell(serverID, clientID, "^3This GUID is already linked to your account.")
-		return
-	}
-
 	// Check if the GUID has a valid player record
 	if client.playerGUID == 0 || client.guid == "" {
 		m.sendTell(serverID, clientID, "^1Error: Could not identify your GUID. Try reconnecting.")
@@ -1480,7 +1463,7 @@ func (m *ServerManager) handleLinkCommand(ctx context.Context, serverID int64, s
 		return
 	}
 
-	// Check if source and target are the same player (shouldn't happen given above check, but be safe)
+	// Check if this GUID already belongs to the target player
 	if sourcePlayerGUID.PlayerID == linkCode.PlayerID {
 		m.sendTell(serverID, clientID, "^3This GUID is already linked to your account.")
 		return
@@ -1504,6 +1487,55 @@ func (m *ServerManager) handleLinkCommand(ctx context.Context, serverID int64, s
 
 	m.sendTell(serverID, clientID, "^2Link successful! ^7Your GUID has been linked to your account.")
 	log.Printf("Link successful: GUID %s merged into player %d via code %s", client.guid, linkCode.PlayerID, code)
+}
+
+// handleClaimCommand processes a claim command from a player
+func (m *ServerManager) handleClaimCommand(ctx context.Context, serverID int64, state *serverState, clientID int) {
+	client, ok := state.clients[clientID]
+	if !ok {
+		log.Printf("claim: client %d not found in state", clientID)
+		return
+	}
+
+	// Validate client has a resolvable GUID and player_id
+	if client.playerGUID == 0 || client.guid == "" {
+		m.sendTell(serverID, clientID, "^1Error: Could not identify your GUID. Try reconnecting.")
+		return
+	}
+
+	if client.playerID == 0 {
+		m.sendTell(serverID, clientID, "^1Error: Could not identify your player record. Try reconnecting.")
+		return
+	}
+
+	// Check if the player is already claimed
+	claimed, err := m.store.IsPlayerClaimed(ctx, client.playerID)
+	if err != nil {
+		log.Printf("Error checking claim status for player %d: %v", client.playerID, err)
+		m.sendTell(serverID, clientID, "^1Error checking account status. Please try again.")
+		return
+	}
+	if claimed {
+		m.sendTell(serverID, clientID, "^3This GUID is already linked to an account.")
+		return
+	}
+
+	// Invalidate any existing pending claim codes for this player
+	if err := m.store.InvalidatePlayerClaimCodes(ctx, client.playerID); err != nil {
+		log.Printf("Error invalidating claim codes for player %d: %v", client.playerID, err)
+	}
+
+	// Generate a claim code with 30-minute expiry (enough time to finish a match)
+	expiresAt := time.Now().Add(30 * time.Minute)
+	claimCode, err := m.store.CreateClaimCode(ctx, client.playerID, expiresAt)
+	if err != nil {
+		log.Printf("Error creating claim code for player %d: %v", client.playerID, err)
+		m.sendTell(serverID, clientID, "^1Error generating claim code. Please try again.")
+		return
+	}
+
+	m.sendTell(serverID, clientID, fmt.Sprintf("Your claim code is: ^3%s^7 - Visit ^5trinity.ernie.io ^7to claim this identity. Expires in 30 minutes.", claimCode.Code))
+	log.Printf("Claim code %s generated for player %d on server %d", claimCode.Code, client.playerID, serverID)
 }
 
 // sendTell sends a private message to a player via RCON (runs async to avoid deadlock)
@@ -1552,10 +1584,10 @@ func (m *ServerManager) greetPlayer(ctx context.Context, serverID int64, clientI
 		}
 	} else {
 		if hasStats {
-			message = fmt.Sprintf("Welcome, %s^7! K/D: ^3%.2f ^7| Matches: ^3%d ^7- Visit ^5trinity.ernie.io ^7to link your account!",
+			message = fmt.Sprintf("Welcome, %s^7! K/D: ^3%.2f ^7| Matches: ^3%d ^7- Type ^3!claim ^7to link your account!",
 				playerName, stats.Stats.KDRatio, stats.Stats.CompletedMatches)
 		} else {
-			message = fmt.Sprintf("Welcome, %s^7! Visit ^5trinity.ernie.io ^7to link your account!",
+			message = fmt.Sprintf("Welcome, %s^7! Type ^3!claim ^7to link your account!",
 				playerName)
 		}
 	}

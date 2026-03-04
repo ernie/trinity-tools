@@ -59,6 +59,8 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+
+
 // --- Server methods ---
 
 // UpsertServer creates or updates a server
@@ -1696,13 +1698,13 @@ func (s *Store) CreateLinkCode(ctx context.Context, userID, playerID int64, expi
 	return nil, fmt.Errorf("failed to generate unique code after 5 attempts")
 }
 
-// GetValidLinkCode retrieves a valid (unexpired, unused) link code
+// GetValidLinkCode retrieves a valid (unexpired, unused) link code (user-initiated, user_id IS NOT NULL)
 func (s *Store) GetValidLinkCode(ctx context.Context, code string) (*LinkCode, error) {
 	var lc LinkCode
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, code, user_id, player_id, created_at, expires_at
 		FROM link_codes
-		WHERE code = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP
+		WHERE code = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP AND user_id IS NOT NULL
 	`, code).Scan(&lc.ID, &lc.Code, &lc.UserID, &lc.PlayerID, &lc.CreatedAt, &lc.ExpiresAt)
 	if err != nil {
 		return nil, err
@@ -1744,6 +1746,190 @@ func (s *Store) InvalidateUserLinkCodes(ctx context.Context, userID int64) error
 		DELETE FROM link_codes WHERE user_id = ? AND used_at IS NULL
 	`, userID)
 	return err
+}
+
+// --- Claim Code methods ---
+
+// ClaimCode represents a pending claim code (user_id IS NULL, player-initiated)
+type ClaimCode struct {
+	ID        int64
+	Code      string
+	PlayerID  int64
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+// CreateClaimCode generates and stores a new claim code (user_id = NULL)
+func (s *Store) CreateClaimCode(ctx context.Context, playerID int64, expiresAt time.Time) (*ClaimCode, error) {
+	for attempts := 0; attempts < 5; attempts++ {
+		code, err := generateLinkCode()
+		if err != nil {
+			return nil, fmt.Errorf("generating code: %w", err)
+		}
+
+		result, err := s.db.ExecContext(ctx, `
+			INSERT INTO link_codes (code, user_id, player_id, expires_at)
+			VALUES (?, NULL, ?, ?)
+		`, code, playerID, expiresAt.UTC().Format("2006-01-02 15:04:05"))
+		if err != nil {
+			if strings.Contains(err.Error(), "UNIQUE constraint") {
+				continue
+			}
+			return nil, err
+		}
+		id, _ := result.LastInsertId()
+		return &ClaimCode{
+			ID:        id,
+			Code:      code,
+			PlayerID:  playerID,
+			ExpiresAt: expiresAt,
+		}, nil
+	}
+	return nil, fmt.Errorf("failed to generate unique code after 5 attempts")
+}
+
+// GetValidClaimCode retrieves a valid claim code (user_id IS NULL)
+func (s *Store) GetValidClaimCode(ctx context.Context, code string) (*ClaimCode, error) {
+	var cc ClaimCode
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, code, player_id, created_at, expires_at
+		FROM link_codes
+		WHERE code = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP AND user_id IS NULL
+	`, code).Scan(&cc.ID, &cc.Code, &cc.PlayerID, &cc.CreatedAt, &cc.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	return &cc, nil
+}
+
+// InvalidatePlayerClaimCodes deletes all pending claim codes for a player
+func (s *Store) InvalidatePlayerClaimCodes(ctx context.Context, playerID int64) error {
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM link_codes WHERE player_id = ? AND user_id IS NULL AND used_at IS NULL
+	`, playerID)
+	return err
+}
+
+// ClaimRegister creates a new user account and links the player, marking the claim code as used.
+// Returns the new user ID.
+func (s *Store) ClaimRegister(ctx context.Context, codeID, playerID int64, username, passwordHash string) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// Check player isn't already claimed
+	var claimCount int
+	err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE player_id = ?`, playerID).Scan(&claimCount)
+	if err != nil {
+		return 0, err
+	}
+	if claimCount > 0 {
+		return 0, fmt.Errorf("player is already linked to another account")
+	}
+
+	// Create user with password_change_required = FALSE
+	result, err := tx.ExecContext(ctx, `
+		INSERT INTO users (username, password_hash, is_admin, player_id, password_change_required)
+		VALUES (?, ?, FALSE, ?, FALSE)
+	`, username, passwordHash, playerID)
+	if err != nil {
+		return 0, err
+	}
+	userID, _ := result.LastInsertId()
+
+	// Mark claim code as used
+	res, err := tx.ExecContext(ctx, `
+		UPDATE link_codes SET used_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND used_at IS NULL
+	`, codeID)
+	if err != nil {
+		return 0, err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return 0, fmt.Errorf("claim code already used or expired")
+	}
+
+	return userID, tx.Commit()
+}
+
+// ClaimLink links a claim code's player to an existing user account, marking the code as used.
+// If the user already has a player, the claim player is merged into it.
+func (s *Store) ClaimLink(ctx context.Context, codeID, claimPlayerID, userID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Check player isn't already claimed by a different user
+	var existingUserID sql.NullInt64
+	err = tx.QueryRowContext(ctx, `SELECT id FROM users WHERE player_id = ?`, claimPlayerID).Scan(&existingUserID)
+	if err == nil && existingUserID.Int64 != userID {
+		return fmt.Errorf("player is already linked to another account")
+	}
+
+	// Mark claim code as used first (before any player delete that would CASCADE)
+	res, err := tx.ExecContext(ctx, `
+		UPDATE link_codes SET used_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND used_at IS NULL
+	`, codeID)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("claim code already used or expired")
+	}
+
+	// Get the user's current player_id
+	var currentPlayerID sql.NullInt64
+	err = tx.QueryRowContext(ctx, `SELECT player_id FROM users WHERE id = ?`, userID).Scan(&currentPlayerID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	if currentPlayerID.Valid && currentPlayerID.Int64 != claimPlayerID {
+		// User already has a different player - merge claim player into it
+		targetPlayerID := currentPlayerID.Int64
+
+		// Move all GUIDs to target player
+		_, err = tx.ExecContext(ctx, `
+			UPDATE player_guids SET player_id = ? WHERE player_id = ?
+		`, targetPlayerID, claimPlayerID)
+		if err != nil {
+			return err
+		}
+
+		// Update target player timestamps
+		_, err = tx.ExecContext(ctx, `
+			UPDATE players SET
+				first_seen = (SELECT MIN(first_seen) FROM player_guids WHERE player_id = ?),
+				last_seen = (SELECT MAX(last_seen) FROM player_guids WHERE player_id = ?),
+				is_vr = EXISTS(SELECT 1 FROM player_guids WHERE player_id = ? AND is_vr = TRUE)
+			WHERE id = ?
+		`, targetPlayerID, targetPlayerID, targetPlayerID, targetPlayerID)
+		if err != nil {
+			return err
+		}
+
+		// Delete the source player
+		_, err = tx.ExecContext(ctx, `DELETE FROM players WHERE id = ?`, claimPlayerID)
+		if err != nil {
+			return err
+		}
+	} else if !currentPlayerID.Valid {
+		// User has no player - just set it
+		_, err = tx.ExecContext(ctx, `UPDATE users SET player_id = ? WHERE id = ?`, claimPlayerID, userID)
+		if err != nil {
+			return err
+		}
+	}
+	// else: currentPlayerID == claimPlayerID, nothing to do
+
+	return tx.Commit()
 }
 
 // GetMatchSummaryByID returns a single match by ID with all player stats

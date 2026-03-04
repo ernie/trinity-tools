@@ -29,6 +29,12 @@ export function AccountPage() {
   const [linkError, setLinkError] = useState('')
   const timerRef = useRef<number | null>(null)
 
+  // Claim code state (for linking a claim code on this page)
+  const [claimCode, setClaimCode] = useState('')
+  const [claimLoading, setClaimLoading] = useState(false)
+  const [claimError, setClaimError] = useState('')
+  const [claimSuccess, setClaimSuccess] = useState(false)
+
   // Password change state
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
@@ -88,6 +94,48 @@ export function AccountPage() {
       }
     }
   }, [expiresAt])
+
+  const handleClaimLink = async () => {
+    if (!auth.token || claimCode.length !== 6) return
+    setClaimLoading(true)
+    setClaimError('')
+    setClaimSuccess(false)
+
+    try {
+      // First validate the code
+      const validateRes = await fetch('/api/claim/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: claimCode }),
+      })
+      if (!validateRes.ok) {
+        const data = await validateRes.json()
+        setClaimError(data.error || 'Invalid or expired claim code')
+        return
+      }
+
+      // Then link it
+      const res = await fetch('/api/claim/link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify({ code: claimCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setClaimError(data.error || 'Failed to link player')
+        return
+      }
+      setClaimSuccess(true)
+      setClaimCode('')
+    } catch {
+      setClaimError('Network error')
+    } finally {
+      setClaimLoading(false)
+    }
+  }
 
   const generateCode = async () => {
     if (!auth.token) return
@@ -339,44 +387,72 @@ export function AccountPage() {
               )}
             </section>
 
-            {/* Link Additional GUID */}
-            {profile.player && (
-              <section className="account-section">
-                <h2>Link Additional GUID</h2>
-                <div className="link-explanation">
-                  <p>
-                    If you play on multiple computers or reinstall Quake 3, you may get a different
-                    player ID (GUID) and see a separate profile for yourself.
-                  </p>
-                  <p>
-                    <strong>To minimize extra GUIDs: copy your <code>qkey</code> file between ioquake3 installations,
-                    and set <code>cl_guidServerUniq 0</code> in your config.</strong>
-                  </p>
-                </div>
+            {/* Link Game Identity */}
+            <section className="account-section">
+              <h2>Link Game Identity</h2>
 
-                {linkError && <div className="error-message">{linkError}</div>}
-
-                {linkCode ? (
-                  <div className="code-display">
-                    <div className="code-label">Your Link Code:</div>
-                    <div className="code-value">{linkCode}</div>
-                    <div className="code-timer">
-                      Expires in: <strong>{formatTime(timeRemaining)}</strong>
-                    </div>
-                    <div className="code-instruction">
-                      In game, type: <code>!link {linkCode}</code>
-                    </div>
-                    <button onClick={generateCode} disabled={generatingCode} className="generate-btn">
-                      {generatingCode ? 'Generating...' : 'Generate New Code'}
-                    </button>
-                  </div>
-                ) : (
-                  <button className="generate-btn" onClick={generateCode} disabled={generatingCode}>
-                    {generatingCode ? 'Generating...' : 'Generate Link Code'}
+              <div className="link-method">
+                <h3>From in-game</h3>
+                <p className="link-explanation-text">
+                  Type <code>!claim</code> in-game to get a code, then enter it here.
+                </p>
+                <div className="claim-code-inline">
+                  <input
+                    type="text"
+                    value={claimCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                      setClaimCode(val)
+                      setClaimError('')
+                      setClaimSuccess(false)
+                    }}
+                    placeholder="000000"
+                    maxLength={6}
+                    className="claim-code-field"
+                  />
+                  <button
+                    onClick={handleClaimLink}
+                    disabled={claimCode.length !== 6 || claimLoading}
+                    className="generate-btn"
+                  >
+                    {claimLoading ? 'Linking...' : 'Link'}
                   </button>
-                )}
-              </section>
-            )}
+                </div>
+                {claimError && <div className="error-message">{claimError}</div>}
+                {claimSuccess && <div className="success-message">Identity linked! Refresh to see changes.</div>}
+              </div>
+
+              {profile.player && (
+                <div className="link-method">
+                  <h3>From the web</h3>
+                  <p className="link-explanation-text">
+                    Generate a code here, then type <code>!link &lt;code&gt;</code> in-game.
+                  </p>
+
+                  {linkError && <div className="error-message">{linkError}</div>}
+
+                  {linkCode ? (
+                    <div className="code-display">
+                      <div className="code-label">Your Link Code:</div>
+                      <div className="code-value">{linkCode}</div>
+                      <div className="code-timer">
+                        Expires in: <strong>{formatTime(timeRemaining)}</strong>
+                      </div>
+                      <div className="code-instruction">
+                        In game, type: <code>!link {linkCode}</code>
+                      </div>
+                      <button onClick={generateCode} disabled={generatingCode} className="generate-btn">
+                        {generatingCode ? 'Generating...' : 'Generate New Code'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button className="generate-btn" onClick={generateCode} disabled={generatingCode}>
+                      {generatingCode ? 'Generating...' : 'Generate Link Code'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
           </div>
         </div>
       )}

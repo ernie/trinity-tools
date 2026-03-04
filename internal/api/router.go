@@ -65,6 +65,11 @@ func NewRouter(store *storage.Store, manager *collector.ServerManager, authServi
 	r.mux.HandleFunc("GET /api/account/profile", r.requireAuth(r.handleGetAccountProfile))
 	r.mux.HandleFunc("POST /api/account/link-code", r.requireAuth(r.handleCreateLinkCode))
 
+	// Claim routes (player-initiated account creation)
+	r.mux.HandleFunc("POST /api/claim/validate", r.handleClaimValidate)
+	r.mux.HandleFunc("POST /api/claim/register", r.handleClaimRegister)
+	r.mux.HandleFunc("POST /api/claim/link", r.requireAuth(r.handleClaimLink))
+
 	// User management routes (admin only)
 	r.mux.HandleFunc("GET /api/users", r.requireAdmin(r.handleListUsers))
 	r.mux.HandleFunc("POST /api/users", r.requireAdmin(r.handleCreateUser))

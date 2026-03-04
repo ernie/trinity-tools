@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 interface LoginFormProps {
   onLogin: (username: string, password: string) => Promise<boolean>
@@ -26,9 +27,12 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 
   if (!expanded) {
     return (
-      <button className="login-toggle" onClick={() => setExpanded(true)}>
-        Login
-      </button>
+      <div className="login-collapsed">
+        <Link to="/claim" className="claim-link">Claim</Link>
+        <button className="login-toggle" onClick={() => setExpanded(true)}>
+          Login
+        </button>
+      </div>
     )
   }
 
