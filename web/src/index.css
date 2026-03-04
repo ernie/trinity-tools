@@ -3250,6 +3250,18 @@ h2 {
   .account-columns {
     grid-template-columns: 1fr;
   }
+
+  .account-left,
+  .account-right {
+    display: contents;
+  }
+
+  .account-profile  { order: 1; }
+  .account-info     { order: 2; }
+  .account-password { order: 3; }
+  .account-guids    { order: 4; }
+  .account-link     { order: 5; }
+  .account-matches  { order: 6; }
 }
 
 .account-section {

@@ -223,7 +223,7 @@ export function AccountPage() {
           {/* Left Column: Player Profile & GUIDs */}
           <div className="account-left">
             {/* Player Profile with Stats */}
-            <section className="account-section">
+            <section className="account-section account-profile">
               <h2>Player Profile</h2>
               {profile.player ? (
                 <div className="player-profile-inline">
@@ -276,7 +276,7 @@ export function AccountPage() {
 
             {/* GUIDs Section */}
             {profile.guids && profile.guids.length > 0 && (
-              <section className="account-section">
+              <section className="account-section account-guids">
                 <h2>Your Game Identities ({profile.guids.length})</h2>
                 <div className="guids-list">
                   {profile.guids.map((guid) => (
@@ -296,7 +296,7 @@ export function AccountPage() {
 
             {/* Recent Matches Section */}
             {profile.player && (
-              <section className="account-section">
+              <section className="account-section account-matches">
                 <PlayerRecentMatches playerId={profile.player.id} />
               </section>
             )}
@@ -305,7 +305,7 @@ export function AccountPage() {
           {/* Right Column: Account Info, Password, Link */}
           <div className="account-right">
             {/* Account Information */}
-            <section className="account-section">
+            <section className="account-section account-info">
               <h2>Account Information</h2>
               <dl className="info-list">
                 <dt>Username</dt>
@@ -320,7 +320,7 @@ export function AccountPage() {
             </section>
 
             {/* Change Password */}
-            <section className="account-section">
+            <section className="account-section account-password">
               <h2>Change Password</h2>
               {passwordSuccess && (
                 <div className="success-message">Password changed successfully!</div>
@@ -388,7 +388,7 @@ export function AccountPage() {
             </section>
 
             {/* Link Game Identity */}
-            <section className="account-section">
+            <section className="account-section account-link">
               <h2>Link Game Identity</h2>
 
               <div className="link-method">
